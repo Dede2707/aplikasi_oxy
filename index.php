@@ -326,15 +326,7 @@ $level_user     = strtolower(trim($level_user_raw));
                                                 <?php endif; ?>
                                             </div>
                                         </div>
-                                        <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
-                                            <a href="index.php?page=laporan" class="btn btn-success w-100 fw-semibold py-2">
-                                                <i class="fa-solid fa-file-invoice-dollar me-2"></i>Buka Tabel Laporan
-                                            </a>
-                                        <?php else: ?>
-                                            <button class="btn btn-secondary w-100 fw-semibold py-2" disabled>
-                                                <i class="fa-solid fa-lock me-2"></i>Laporan Terkunci
-                                            </button>
-                                        <?php endif; ?>
+
                                     </div>
                                 </div>
                             </div>
