@@ -103,6 +103,11 @@ $level_user     = strtolower(trim($level_user_raw));
                                     <i class="fa-solid fa-cart-shopping me-3"></i>Data Penjualan
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a href="index.php?page=pelanggan_loyal" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'pelanggan_loyal' ? 'active' : '' ?>">
+                                    <i class="fa-solid fa-crown text-warning me-3"></i>Pelanggan Loyal
+                                </a>
+                            </li>
                         <?php endif; ?>
 
                         <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
@@ -163,6 +168,14 @@ $level_user     = strtolower(trim($level_user_raw));
                             exit();
                         }
                         include 'penjualan.php';
+                        break;
+
+                    case 'pelanggan_loyal':
+                        if ($level_user !== 'admin' && $level_user !== 'staff kasir' && $level_user !== 'kasir') {
+                            echo "<script>alert('Akses Ditolak! Menu ini hanya untuk Admin / Staff Kasir.'); window.location.href='index.php';</script>";
+                            exit();
+                        }
+                        include 'pelanggan_loyal.php';
                         break;
 
                     case 'stok':
@@ -296,9 +309,22 @@ $level_user     = strtolower(trim($level_user_raw));
                             <div class="col-12 col-xl-4">
                                 <div class="card border-0 shadow-sm h-100">
                                     <div class="card-body p-3 p-sm-4 d-flex flex-column justify-content-between">
-                                        <div>
-                                            <h6 class="fw-bold text-dark mb-3">Laporan Tabel Berkala</h6>
-                                            <p class="text-muted small">Ingin melihat rincian angka laporan retur bulanan dan tahunan dalam bentuk data tabel tabel yang dapat diklik?</p>
+                                        <div class="card border-0 shadow-sm h-100">
+                                            <div class="card-body p-3 p-sm-4 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <h6 class="fw-bold text-dark mb-3">Laporan Tabel Berkala</h6>
+                                                    <p class="text-muted small">Ingin melihat rincian angka laporan retur bulanan (Januari - Desember) dan tahunan dari tahun aktif ke depan?</p>
+                                                </div>
+                                                <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
+                                                    <a href="index.php?page=laporan&tahun=<?= $tahun_sekarang ?>" class="btn btn-success w-100 fw-semibold py-2">
+                                                        <i class="fa-solid fa-file-invoice-dollar me-2"></i>Buka Tabel Laporan
+                                                    </a>
+                                                <?php else: ?>
+                                                    <button class="btn btn-secondary w-100 fw-semibold py-2" disabled>
+                                                        <i class="fa-solid fa-lock me-2"></i>Laporan Terkunci
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                         <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
                                             <a href="index.php?page=laporan" class="btn btn-success w-100 fw-semibold py-2">

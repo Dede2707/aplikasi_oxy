@@ -66,9 +66,75 @@ if (isset($_GET['hapus'])) {
                         <input type="date" name="tgl_penjualan" class="form-control" value="<?= date('Y-m-d') ?>" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold text-muted">Nama Pelanggan</label>
-                        <input type="text" name="nama_pelanggan" class="form-control" placeholder="Contoh: Toko Berkah" required>
+                        <label>Nama Pelanggan / Pembeli</label>
+                        <input type="text" name="nama_pelanggan" id="nama_pelanggan" class="form-control" autocomplete="off" placeholder="Ketik nama pelanggan...">
+                        <div id="info_diskon_loyal" class="mt-1 small"></div>
                     </div>
+
+                    <div class="mb-3">
+                        <label>Total Harga Asli (Rp)</label>
+                        <input type="number" id="total_harga_asli" class="form-control" value="100000" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Total Yang Harus Dibayar (Setelah Diskon Loyalitas jika ada)</label>
+                        <input type="number" name="total_harga" id="total_harga_akhir" class="form-control fw-bold text-success" readonly>
+                    </div>
+
+
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            const inputNama = document.getElementById("nama_pelanggan");
+                            const inputHargaAsli = document.getElementById("total_harga_asli");
+                            const inputHargaAkhir = document.getElementById("total_harga_akhir");
+                            const infoDiskon = document.getElementById("info_diskon_loyal");
+
+                            // Variabel penampung diskon
+                            let persenDiskonAktif = 0;
+
+                            // Fungsi menghitung kalkulasi pemotongan harga
+                            function hitungUlangHarga() {
+                                let hargaAwal = parseFloat(inputHargaAsli.value) || 0;
+                                if (persenDiskonAktif > 0) {
+                                    let nominalPotongan = (hargaAwal * persenDiskonAktif) / 100;
+                                    inputHargaAkhir.value = hargaAwal - nominalPotongan;
+                                } else {
+                                    inputHargaAkhir.value = hargaAwal;
+                                }
+                            }
+
+                            // Picu hitung ulang jika harga barang berubah
+                            inputHargaAsli.addEventListener("input", hitungUlangHarga);
+
+                            // Deteksi saat kasir selesai mengetik nama pelanggan (saat kursor pindah / blur atau mengetik)
+                            inputNama.addEventListener("change", function() {
+                                let namaInput = this.value;
+
+                                if (namaInput.trim() === "") {
+                                    persenDiskonAktif = 0;
+                                    infoDiskon.innerHTML = "";
+                                    hitungUlangHarga();
+                                    return;
+                                }
+
+                                // Jalankan AJAX mengecek ke file cek_loyalitas.php
+                                fetch('cek_loyalitas.php?nama=' + encodeURIComponent(namaInput))
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.status_loyal === true) {
+                                            persenDiskonAktif = data.potongan_persen;
+                                            infoDiskon.innerHTML = `<span class="badge bg-warning text-dark"><i class="fa-solid fa-crown"></i> Pelanggan Loyal! Dapat Diskon ${data.potongan_persen}% (Total Order Ke-${data.total_transaksi + 1})</span>`;
+                                        } else {
+                                            persenDiskonAktif = 0;
+                                            infoDiskon.innerHTML = `<span class="text-muted"><i class="fa-solid fa-info-circle"></i> Pelanggan Umum (Baru order ${data.total_transaksi} kali)</span>`;
+                                        }
+                                        // Kalkulasi perubahan harga seketika
+                                        hitungUlangHarga();
+                                    })
+                                    .catch(err => console.error("Gagal memeriksa loyalitas pelanggan:", err));
+                            });
+                        });
+                    </script>
 
                     <!-- PILIHAN VARIAN PRODUK -->
                     <div class="mb-3">
