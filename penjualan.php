@@ -84,58 +84,77 @@ if (isset($_GET['hapus'])) {
 
                     <script>
                         document.addEventListener("DOMContentLoaded", function() {
-                            const inputNama = document.getElementById("nama_pelanggan");
-                            const inputHargaAsli = document.getElementById("total_harga_asli");
-                            const inputHargaAkhir = document.getElementById("total_harga_akhir");
-                            const infoDiskon = document.getElementById("info_diskon_loyal");
+                            // 1. SESUAIKAN ID BERIKUT DENGAN ID YANG ADA PADA INPUT FORM TRANSAKSI KAMU:
+                            const inputNama = document.getElementById("nama_pelanggan"); // Input teks nama
+                            const inputHargaAsli = document.getElementById("total_harga_asli"); // Input total harga sebelum diskon
+                            const inputHargaAkhir = document.getElementById("total_harga_akhir"); // Input total yang harus dibayar kasir
+                            const infoDiskon = document.getElementById("info_diskon_loyal"); // Elemen kontainer teks info kuning
 
-                            // Variabel penampung diskon
                             let persenDiskonAktif = 0;
 
-                            // Fungsi menghitung kalkulasi pemotongan harga
+                            // Fungsi menghitung potongan harga diskon
                             function hitungUlangHarga() {
+                                if (!inputHargaAsli || !inputHargaAkhir) return;
+
                                 let hargaAwal = parseFloat(inputHargaAsli.value) || 0;
+
                                 if (persenDiskonAktif > 0) {
                                     let nominalPotongan = (hargaAwal * persenDiskonAktif) / 100;
-                                    inputHargaAkhir.value = hargaAwal - nominalPotongan;
+                                    let hasilAkhir = hargaAwal - nominalPotongan;
+
+                                    inputHargaAkhir.value = Math.round(hasilAkhir); // Mengisi harga akhir otomatis
                                 } else {
-                                    inputHargaAkhir.value = hargaAwal;
+                                    inputHargaAkhir.value = hargaAwal; // Tetap menggunakan harga normal jika bukan pelanggan loyal
                                 }
                             }
 
-                            // Picu hitung ulang jika harga barang berubah
-                            inputHargaAsli.addEventListener("input", hitungUlangHarga);
+                            // Jika kasir mengubah/menambah item barang belanjaan, hitung ulang pemicunya
+                            if (inputHargaAsli) {
+                                inputHargaAsli.addEventListener("input", hitungUlangHarga);
+                                inputHargaAsli.addEventListener("change", hitungUlangHarga);
+                            }
 
-                            // Deteksi saat kasir selesai mengetik nama pelanggan (saat kursor pindah / blur atau mengetik)
-                            inputNama.addEventListener("change", function() {
-                                let namaInput = this.value;
+                            // Deteksi real-time saat kasir selesai mengetik nama pelanggan dan menekan enter/pindah fokus input
+                            if (inputNama) {
+                                inputNama.addEventListener("change", function() {
+                                    let namaInput = this.value;
 
-                                if (namaInput.trim() === "") {
-                                    persenDiskonAktif = 0;
-                                    infoDiskon.innerHTML = "";
-                                    hitungUlangHarga();
-                                    return;
-                                }
-
-                                // Jalankan AJAX mengecek ke file cek_loyalitas.php
-                                fetch('cek_loyalitas.php?nama=' + encodeURIComponent(namaInput))
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.status_loyal === true) {
-                                            persenDiskonAktif = data.potongan_persen;
-                                            infoDiskon.innerHTML = `<span class="badge bg-warning text-dark"><i class="fa-solid fa-crown"></i> Pelanggan Loyal! Dapat Diskon ${data.potongan_persen}% (Total Order Ke-${data.total_transaksi + 1})</span>`;
-                                        } else {
-                                            persenDiskonAktif = 0;
-                                            infoDiskon.innerHTML = `<span class="text-muted"><i class="fa-solid fa-info-circle"></i> Pelanggan Umum (Baru order ${data.total_transaksi} kali)</span>`;
-                                        }
-                                        // Kalkulasi perubahan harga seketika
+                                    if (namaInput.trim() === "") {
+                                        persenDiskonAktif = 0;
+                                        if (infoDiskon) infoDiskon.innerHTML = "";
                                         hitungUlangHarga();
-                                    })
-                                    .catch(err => console.error("Gagal memeriksa loyalitas pelanggan:", err));
-                            });
+                                        return;
+                                    }
+
+                                    // Eksekusi pemanggilan data latar belakang (AJAX)
+                                    fetch('cek_loyalitas.php?nama=' + encodeURIComponent(namaInput))
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            console.log("Data Loyalitas Diterima:", data); // Log ini berguna untuk cek di Inspect Element browser
+
+                                            if (data.status_loyal === true) {
+                                                persenDiskonAktif = data.potongan_persen;
+                                                if (infoDiskon) {
+                                                    infoDiskon.innerHTML = `<div class="alert alert-warning py-1 px-2 mt-2 mb-0 d-inline-block rounded small fw-bold">
+                                <i class="fa-solid fa-crown text-danger me-1"></i> Pelanggan Loyal Terdeteksi! Dapat Diskon ${data.potongan_persen}% (Total Order Ke-${data.total_transaksi + 1})
+                            </div>`;
+                                                }
+                                            } else {
+                                                persenDiskonAktif = 0;
+                                                if (infoDiskon) {
+                                                    infoDiskon.innerHTML = `<small class="text-muted d-block mt-1"><i class="fa-solid fa-circle-info me-1"></i> Pelanggan Umum (Baru order ${data.total_transaksi} kali)</small>`;
+                                                }
+                                            }
+                                            // Jalankan fungsi kalkulasi potongan setelah data didapatkan
+                                            hitungUlangHarga();
+                                        })
+                                        .catch(err => {
+                                            console.error("Gagal memuat sistem cek_loyalitas.php. Pastikan file ada di folder root.", err);
+                                        });
+                                });
+                            }
                         });
                     </script>
-
                     <!-- PILIHAN VARIAN PRODUK -->
                     <div class="mb-3">
                         <label class="form-label small fw-semibold text-muted">Pilih Varian Produk Oxywater</label>
