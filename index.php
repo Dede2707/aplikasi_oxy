@@ -42,6 +42,20 @@ $level_user     = strtolower(trim($level_user_raw));
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+        /* Styling Dasar */
+        .nav-link {
+            color: #adb5bd;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+
+        /* Pengaturan Responsif */
         @media (min-width: 992px) {
             .sidebar-sticky {
                 position: fixed;
@@ -58,16 +72,17 @@ $level_user     = strtolower(trim($level_user_raw));
             }
         }
 
-        .nav-link {
-            color: #adb5bd;
-            transition: all 0.2s;
-        }
+        /* Khusus Tampilan HP (Di bawah 992px) */
+        @media (max-width: 991.98px) {
+            .sidebar-sticky {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
 
-        .nav-link:hover,
-        .nav-link.active {
-            color: #fff;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
+            .main-content-offset {
+                margin-left: 0;
+            }
         }
     </style>
 </head>
@@ -113,7 +128,7 @@ $level_user     = strtolower(trim($level_user_raw));
                         <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
                             <li class="nav-item">
                                 <a href="index.php?page=stok" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'stok' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-boxes-stacked me-3"></i>Stok Penjualan
+                                    <i class="fa-solid fa-boxes-stacked me-3"></i>Data Stok
                                 </a>
                             </li>
                         <?php endif; ?>
@@ -129,7 +144,7 @@ $level_user     = strtolower(trim($level_user_raw));
                         <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
                             <li class="nav-item">
                                 <a href="index.php?page=laporan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'laporan' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-file-invoice-dollar me-3"></i>Laporan Retur
+                                    <i class="fa-solid fa-file-invoice-dollar me-3"></i>Laporan
                                 </a>
                             </li>
                         <?php endif; ?>
@@ -137,7 +152,7 @@ $level_user     = strtolower(trim($level_user_raw));
                         <?php if ($level_user === 'admin'): ?>
                             <li class="nav-item">
                                 <a href="index.php?page=users" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'users' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-user-gear me-3"></i>Manajemen User
+                                    <i class="fa-solid fa-user-gear me-3"></i>Tambah User
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -225,7 +240,7 @@ $level_user     = strtolower(trim($level_user_raw));
                     case 'dashboard':
                     default:
                         // ==========================================
-                        // ---- DATA GRAFIK 1: 7 DATA TERAKHIR ------
+                        // ---- DATA GRAFIK 1: 7 RETUR TERAKHIR -----
                         // ==========================================
                         $label_tanggal = [];
                         $data_jumlah = [];
@@ -239,7 +254,28 @@ $level_user     = strtolower(trim($level_user_raw));
                         }
 
                         // ==========================================
-                        // ---- DATA GRAFIK 2: GRAFIK BULANAN -------
+                        // ---- DATA GRAFIK 2: 7 PENJUALAN TERAKHIR -
+                        // ==========================================
+                        // =========================================================================
+                        // ---- DATA GRAFIK 2: 7 PENJUALAN TERAKHIR (SUDAH DIPERBAIKI) ------------
+                        // =========================================================================
+                        $label_penjualan = [];
+                        $data_penjualan = [];
+
+                        // Query disesuaikan dengan kolom tgl_penjualan dan jumlah_produk
+                        $sql_penjualan = "SELECT tgl_penjualan, SUM(jumlah_produk) as total_qty FROM penjualan GROUP BY tgl_penjualan ORDER BY tgl_penjualan ASC LIMIT 7";
+                        $query_p = mysqli_query($koneksi, $sql_penjualan);
+
+                        if ($query_p) {
+                            while ($row = mysqli_fetch_assoc($query_p)) {
+                                // Menggunakan kolom tgl_penjualan untuk label grafik
+                                $label_penjualan[] = date('d/m', strtotime($row['tgl_penjualan']));
+                                $data_penjualan[]  = (int)$row['total_qty'];
+                            }
+                        }
+
+                        // ==========================================
+                        // ---- DATA GRAFIK 3: GRAFIK RETUR BULANAN -
                         // ==========================================
                         $bulan_labels = [];
                         $bulan_data = [];
@@ -255,7 +291,7 @@ $level_user     = strtolower(trim($level_user_raw));
                         }
 
                         // ==========================================
-                        // ---- DATA GRAFIK 3: GRAFIK TAHUNAN -------
+                        // ---- DATA GRAFIK 4: GRAFIK RETUR TAHUNAN -
                         // ==========================================
                         $tahun_labels = [];
                         $tahun_data = [];
@@ -268,10 +304,14 @@ $level_user     = strtolower(trim($level_user_raw));
                             }
                         }
 
-                        // Backup jika database kosong
+                        // --- BACKUP DATA JIKA DATABASE MASIH KOSONG ---
                         if (empty($label_tanggal)) {
-                            $label_tanggal = ['Belum Ada'];
+                            $label_tanggal = [date('d/m')];
                             $data_jumlah = [0];
+                        }
+                        if (empty($label_penjualan)) {
+                            $label_penjualan = [date('d/m')];
+                            $data_penjualan = [0];
                         }
                         if (empty($bulan_labels)) {
                             $bulan_labels = ['Belum Ada'];
@@ -293,11 +333,24 @@ $level_user     = strtolower(trim($level_user_raw));
                                 </div>
                             </div>
 
+                            <div class="col-12 mt-4">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body p-4">
+                                        <h6 class="fw-bold text-dark mb-3">
+                                            <i class="fa-solid fa-cart-shopping text-primary me-2"></i>Tren Penjualan (7 Hari Terakhir)
+                                        </h6>
+                                        <div style="position: relative; height: 300px; width: 100%;">
+                                            <canvas id="chartPenjualanUtama"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12 col-xl-8">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body p-3 p-sm-4">
                                         <h6 class="fw-bold text-dark mb-3">
-                                            <i class="fa-solid fa-chart-line text-success me-2"></i>Tren Retur Produk (7 Data Terakhir)
+                                            <i class="fa-solid fa-chart-line text-danger me-2"></i>Tren Produk Retur (7 Hari Terakhir)
                                         </h6>
                                         <div style="position: relative; height: 300px; width: 100%;">
                                             <canvas id="chartReturUtama"></canvas>
@@ -309,24 +362,19 @@ $level_user     = strtolower(trim($level_user_raw));
                             <div class="col-12 col-xl-4">
                                 <div class="card border-0 shadow-sm h-100">
                                     <div class="card-body p-3 p-sm-4 d-flex flex-column justify-content-between">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-body p-3 p-sm-4 d-flex flex-column justify-content-between">
-                                                <div>
-                                                    <h6 class="fw-bold text-dark mb-3">Laporan Tabel Berkala</h6>
-                                                    <p class="text-muted small">Ingin melihat rincian angka laporan retur bulanan (Januari - Desember) dan tahunan dari tahun aktif ke depan?</p>
-                                                </div>
-                                                <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
-                                                    <a href="index.php?page=laporan&tahun=<?= $tahun_sekarang ?>" class="btn btn-success w-100 fw-semibold py-2">
-                                                        <i class="fa-solid fa-file-invoice-dollar me-2"></i>Buka Tabel Laporan
-                                                    </a>
-                                                <?php else: ?>
-                                                    <button class="btn btn-secondary w-100 fw-semibold py-2" disabled>
-                                                        <i class="fa-solid fa-lock me-2"></i>Laporan Terkunci
-                                                    </button>
-                                                <?php endif; ?>
-                                            </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-file-shield text-success me-2"></i>Laporan Tabel Berkala</h6>
+                                            <p class="text-muted small">Ingin melihat rincian angka laporan retur bulanan (Januari - Desember) dan tahunan dari tahun aktif ke depan?</p>
                                         </div>
-
+                                        <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
+                                            <a href="index.php?page=laporan&tab=penjualan" class="btn btn-primary">
+                                                <i class="fa fa-list"></i> Lihat Laporan Penjualan
+                                            </a>
+                                        <?php else: ?>
+                                            <button class="btn btn-secondary w-100 fw-semibold py-2 mt-3" disabled>
+                                                <i class="fa-solid fa-lock me-2"></i>Laporan Terkunci
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -334,7 +382,7 @@ $level_user     = strtolower(trim($level_user_raw));
                             <div class="col-12 col-md-6">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body p-4">
-                                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Grafik Retur Bulanan (<?= $tahun_sekarang ?>)</h6>
+                                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Grafik Bulanan Retur (<?= $tahun_sekarang ?>)</h6>
                                         <div style="position: relative; height: 260px;"><canvas id="chartBulanan"></canvas></div>
                                     </div>
                                 </div>
@@ -343,7 +391,7 @@ $level_user     = strtolower(trim($level_user_raw));
                             <div class="col-12 col-md-6">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body p-4">
-                                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-calendar-minus text-warning me-2"></i>Grafik Retur Tahunan</h6>
+                                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-calendar-minus text-warning me-2"></i>Grafik Tahunan Retur</h6>
                                         <div style="position: relative; height: 260px;"><canvas id="chartTahunan"></canvas></div>
                                     </div>
                                 </div>
@@ -351,6 +399,7 @@ $level_user     = strtolower(trim($level_user_raw));
                         </div>
 
                         <script>
+                            // Chart Tren Retur 7 Hari
                             new Chart(document.getElementById('chartReturUtama').getContext('2d'), {
                                 type: 'line',
                                 data: {
@@ -358,8 +407,8 @@ $level_user     = strtolower(trim($level_user_raw));
                                     datasets: [{
                                         label: 'Jumlah Produk Diretur (Qty)',
                                         data: <?= json_encode($data_jumlah); ?>,
-                                        borderColor: '#0d6efd',
-                                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                                        borderColor: '#dc3545',
+                                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
                                         borderWidth: 3,
                                         tension: 0.3,
                                         fill: true
@@ -371,6 +420,7 @@ $level_user     = strtolower(trim($level_user_raw));
                                 }
                             });
 
+                            // Chart Bulanan Retur
                             new Chart(document.getElementById('chartBulanan').getContext('2d'), {
                                 type: 'bar',
                                 data: {
@@ -388,6 +438,7 @@ $level_user     = strtolower(trim($level_user_raw));
                                 }
                             });
 
+                            // Chart Tahunan Retur
                             new Chart(document.getElementById('chartTahunan').getContext('2d'), {
                                 type: 'line',
                                 data: {
@@ -398,6 +449,24 @@ $level_user     = strtolower(trim($level_user_raw));
                                         borderColor: '#f59e0b',
                                         tension: 0.2,
                                         fill: false
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false
+                                }
+                            });
+
+                            // Chart Tren Penjualan Utama
+                            new Chart(document.getElementById('chartPenjualanUtama').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels: <?= json_encode($label_penjualan); ?>,
+                                    datasets: [{
+                                        label: 'Jumlah Produk Terjual (Qty)',
+                                        data: <?= json_encode($data_penjualan); ?>,
+                                        backgroundColor: '#0d6efd',
+                                        borderRadius: 4
                                     }]
                                 },
                                 options: {
