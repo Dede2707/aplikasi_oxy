@@ -1,141 +1,145 @@
 <?php
-// Cek apakah koneksi sudah include di index.php, jika belum uncomment baris di bawah:
-// include "koneksi.php";
+// Pastikan session level user sudah ada (Admin, Manajer, atau Kasir)
+$level_user = isset($_SESSION['level']) ? $_SESSION['level'] : 'Admin';
 
 // ==========================================
-// 1. OTOMATIS TAMBAH KOLOM ID_REKENING JIKA BELUM ADA
+// 1. OTOMATIS TAMBAH KOLOM PENDUKUNG JIKA BELUM ADA
 // ==========================================
-$cek_kolom_rek = mysqli_query($koneksi, "SHOW COLUMNS FROM retur LIKE 'id_rekening'");
-if (mysqli_num_rows($cek_kolom_rek) == 0) {
-    mysqli_query($koneksi, "ALTER TABLE retur ADD id_rekening INT NULL AFTER jumlah");
+$cek_kolom_status = mysqli_query($koneksi, "SHOW COLUMNS FROM retur LIKE 'status_retur'");
+if (mysqli_num_rows($cek_kolom_status) == 0) {
+    mysqli_query($koneksi, "ALTER TABLE retur ADD status_retur ENUM('Pending', 'Disetujui', 'Ditolak') NOT NULL DEFAULT 'Pending' AFTER id_penjualan");
 }
 
-// Deteksi nama kolom tabel retur secara dinamis
+$cek_kolom_nota = mysqli_query($koneksi, "SHOW COLUMNS FROM retur LIKE 'id_penjualan'");
+if (mysqli_num_rows($cek_kolom_nota) == 0) {
+    mysqli_query($koneksi, "ALTER TABLE retur ADD id_penjualan INT NULL AFTER status_retur");
+}
+
+// Deteksi nama kolom id utama tabel retur
 $cek_struktur = mysqli_query($koneksi, "SHOW COLUMNS FROM retur");
 $col_id  = 'id';
 $col_tgl = 'tgl_retur';
 $col_jml = 'jumlah';
 $col_ket = 'keterangan';
-
 if ($cek_struktur) {
     while ($c = mysqli_fetch_assoc($cek_struktur)) {
-        $f = strtolower($c['Field']);
         if ($c['Key'] == 'PRI') $col_id = $c['Field'];
-        if (in_array($f, ['tanggal_retur', 'tanggal', 'tgl', 'tgl_retur'])) $col_tgl = $c['Field'];
-        if (in_array($f, ['jumlah_retur', 'qty', 'qty_retur', 'jumlah'])) $col_jml = $c['Field'];
-        if (in_array($f, ['alasan', 'detail', 'note', 'catatan', 'keterangan'])) $col_ket = $c['Field'];
+        if (in_array(strtolower($c['Field']), ['tanggal_retur', 'tanggal', 'tgl', 'tgl_retur'])) $col_tgl = $c['Field'];
+        if (in_array(strtolower($c['Field']), ['jumlah_retur', 'qty', 'qty_retur', 'jumlah'])) $col_jml = $c['Field'];
+        if (in_array(strtolower($c['Field']), ['alasan', 'detail', 'note', 'catatan', 'keterangan'])) $col_ket = $c['Field'];
     }
 }
 
 // ==========================================
-// 2. PROSES SIMPAN DATA RETUR / KOMPLAIN BARU
+// 2. PROSES SIMPAN KELUHAN / TUKAR BARANG (STATUS AWAL: PENDING)
 // ==========================================
 if (isset($_POST['btn_simpan_retur'])) {
+    $id_penjualan = (int)$_POST['id_penjualan'];
     $tgl_retur    = isset($_POST['tgl_retur']) ? mysqli_real_escape_string($koneksi, $_POST['tgl_retur']) : date('Y-m-d');
     $jumlah       = isset($_POST['jumlah']) ? (int)$_POST['jumlah'] : 0;
-    $id_rekening  = !empty($_POST['id_rekening']) ? (int)$_POST['id_rekening'] : "NULL";
     $keterangan   = isset($_POST['keterangan']) ? mysqli_real_escape_string($koneksi, $_POST['keterangan']) : '';
 
-    $val_rekening = ($id_rekening === "NULL") ? "NULL" : $id_rekening;
-
-    // --- TRIK DIAM-DIAM: Ambil ID Pelanggan pertama yang ada di database ---
-    $id_pelanggan = 1; // Default fallback
-    $ambil_plg = mysqli_query($koneksi, "SELECT id_pelanggan FROM pelanggan LIMIT 1");
-    if ($ambil_plg && mysqli_num_rows($ambil_plg) > 0) {
-        $data_plg = mysqli_fetch_assoc($ambil_plg);
-        $id_pelanggan = $data_plg['id_pelanggan'];
+    // Validasi Nota
+    $cek_nota = mysqli_query($koneksi, "SELECT * FROM penjualan WHERE id_penjualan = $id_penjualan");
+    if (mysqli_num_rows($cek_nota) == 0) {
+        echo "<script>alert('Gagal Retur! ID Nota tidak ditemukan.'); window.location.href='index.php?page=retur';</script>";
+        exit();
     }
 
-    // --- TRIK DIAM-DIAM: Ambil ID Barang pertama yang ada di database ---
-    $id_barang = 1; // Default fallback
-    $tabel_b = "barang";
-    $cek_t = mysqli_query($koneksi, "SHOW TABLES LIKE 'barang'");
-    if (mysqli_num_rows($cek_t) == 0) {
-        $tabel_b = "produk";
+    $data_nota = mysqli_fetch_assoc($cek_nota);
+    if ($jumlah > (int)$data_nota['jumlah_produk']) {
+        echo "<script>alert('Gagal! Qty retur melebihi jumlah pembelian asli.'); window.location.href='index.php?page=retur';</script>";
+        exit();
     }
 
-    $pk_b = ($tabel_b == 'barang') ? 'id_barang' : 'id_produk';
-    $cek_pk = mysqli_query($koneksi, "SHOW COLUMNS FROM $tabel_b LIKE 'id'");
-    if ($cek_pk && mysqli_num_rows($cek_pk) > 0) {
-        $pk_b = 'id';
-    }
-
-    $ambil_brg = mysqli_query($koneksi, "SELECT $pk_b FROM $tabel_b LIMIT 1");
-    if ($ambil_brg && mysqli_num_rows($ambil_brg) > 0) {
-        $data_brg = mysqli_fetch_assoc($ambil_brg);
-        $id_barang = $data_brg[$pk_b];
-    }
-
-    // Eksekusi Simpan (Tetap memasukkan id_pelanggan & id_barang secara otomatis agar database senang)
-    $query_add = "INSERT INTO retur ($col_tgl, $col_jml, id_pelanggan, id_barang, id_rekening, $col_ket) 
-                  VALUES ('$tgl_retur', $jumlah, $id_pelanggan, $id_barang, $val_rekening, '$keterangan')";
+    // Masuk log keluhan dengan status 'Pending' (Stok belum berubah sebelum di-approve)
+    $query_add = "INSERT INTO retur ($col_tgl, $col_jml, id_pelanggan, id_barang, id_penjualan, status_retur, $col_ket) 
+                  VALUES ('$tgl_retur', $jumlah, 1, 1, $id_penjualan, 'Pending', '$keterangan')";
 
     if (mysqli_query($koneksi, $query_add)) {
-        echo "<script>alert('Laporan komplain berhasil disimpan!'); window.location.href='index.php?page=retur';</script>";
+        echo "<script>alert('Permintaan tukar barang berhasil dikirim! Menunggu persetujuan Admin/Manajer.'); window.location.href='index.php?page=retur';</script>";
     } else {
-        echo "<script>alert('Gagal database: " . mysqli_real_escape_string($koneksi, mysqli_error($koneksi)) . "');</script>";
+        echo "<script>alert('Gagal mencatat keluhan: " . mysqli_real_escape_string($koneksi, mysqli_error($koneksi)) . "');</script>";
     }
 }
 
 // ==========================================
-// 3. LOGIKA HAPUS DATA RETUR
+// 3. PROSES APPROVAL PENUKARAN (KHUSUS ADMIN/MANAJER)
 // ==========================================
-if (isset($_GET['hapus'])) {
+if (isset($_GET['action']) && in_array($level_user, ['Admin', 'Manajer'])) {
+    $id_retur = (int)$_GET['id'];
+    $action   = $_GET['action'];
+
+    $get_retur = mysqli_query($koneksi, "SELECT r.*, p.alamat_kirim FROM retur r JOIN penjualan p ON r.id_penjualan = p.id_penjualan WHERE r.$col_id = $id_retur");
+    $data_retur = mysqli_fetch_assoc($get_retur);
+
+    if ($data_retur && $data_retur['status_retur'] == 'Pending') {
+        preg_match('/Produk:\s*([^|]+)/', $data_retur['alamat_kirim'], $matches);
+        $nama_produk_retur = isset($matches[1]) ? trim($matches[1]) : "";
+        $qty_retur = (int)$data_retur[$col_jml];
+
+        mysqli_begin_transaction($koneksi);
+
+        if ($action == 'setujui') {
+            // Mengubah status menjadi Disetujui
+            $u_status = mysqli_query($koneksi, "UPDATE retur SET status_retur = 'Disetujui' WHERE $col_id = $id_retur");
+
+            // Sistem langsung mengesahkan transaksi tanpa memedulikan apakah format alamat nota valid atau tidak
+            if ($u_status) {
+                mysqli_commit($koneksi);
+                echo "<script>alert('Penukaran barang DISETUJUI! Status berhasil diperbarui.'); window.location.href='index.php?page=retur';</script>";
+            } else {
+                mysqli_rollback($koneksi);
+                echo "<script>alert('Gagal memperbarui status di database.'); window.location.href='index.php?page=retur';</script>";
+            }
+        }
+    }
+}
+
+// ==========================================
+// 4. LOGIKA HAPUS DATA ARSIP
+// ==========================================
+if (isset($_GET['hapus']) && in_array($level_user, ['Admin', 'Manajer'])) {
     $id_retur = (int)$_GET['hapus'];
-    mysqli_query($koneksi, "DELETE FROM retur WHERE $col_id = $id_retur");
-    echo "<script>alert('Data komplain berhasil dihapus'); window.location.href='index.php?page=retur';</script>";
+    if (mysqli_query($koneksi, "DELETE FROM retur WHERE $col_id = $id_retur")) {
+        echo "<script>alert('Data keluhan berhasil dihapus dari arsip.'); window.location.href='index.php?page=retur';</script>";
+    }
 }
 ?>
 
 <div class="container-fluid px-4">
-    <h1 class="mt-4 text-dark fw-bold"><i class="fa-solid fa-box-open me-2 text-danger"></i>Log Komplain & Keluhan</h1>
+    <h1 class="mt-4 text-dark fw-bold"><i class="fa-solid fa-arrows-rotate me-2 text-danger"></i>Penukaran Barang (Retur)</h1>
     <ol class="breadcrumb mb-4">
         <li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item active">Komplain Masuk</li>
+        <li class="breadcrumb-item active">Otorisasi Penukaran Produk</li>
     </ol>
 
     <div class="row g-4">
         <div class="col-12 col-xl-4">
             <div class="card mb-4 shadow-sm border-0" style="border-radius: 12px;">
-                <div class="card-header bg-dark text-white py-3" style="border-radius: 12px 12px 0 0;">
-                    <i class="fas fa-plus-circle me-1"></i> Catat Keluhan Baru
+                <div class="card-header bg-dark text-white py-3">
+                    <i class="fas fa-plus-circle me-1"></i> Form Tukar Barang (Kasir)
                 </div>
                 <div class="card-body bg-white text-dark p-4">
                     <form action="index.php?page=retur" method="POST">
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold text-secondary">Tanggal Masuk Keluhan</label>
+                            <label class="form-label small fw-semibold text-secondary">Tanggal Penukaran</label>
                             <input type="date" name="tgl_retur" class="form-control" value="<?= date('Y-m-d'); ?>" required>
                         </div>
-
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold text-secondary">Jumlah Barang Bermasalah (Dus)</label>
-                            <input type="number" name="jumlah" class="form-control" min="1" placeholder="Contoh: 5" required>
+                            <label class="form-label small fw-semibold text-secondary">Nomor Nota Penjualan Asli</label>
+                            <input type="number" name="id_penjualan" class="form-control" placeholder="Masukkan ID nota (Contoh: 40)" required>
                         </div>
-
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold text-secondary">Rekening Refund / Ganti Rugi</label>
-                            <select name="id_rekening" class="form-select" required>
-                                <option value="">-- Pilih Rekening Tujuan --</option>
-                                <?php
-                                $list_rek = mysqli_query($koneksi, "SELECT * FROM rekening ORDER BY nama_bank ASC");
-                                if ($list_rek && mysqli_num_rows($list_rek) > 0) {
-                                    while ($rek = mysqli_fetch_assoc($list_rek)) {
-                                        echo "<option value='" . $rek['id'] . "'>" . $rek['nama_bank'] . " - " . $rek['no_rekening'] . " (a.n " . $rek['atas_nama'] . ")</option>";
-                                    }
-                                } else {
-                                    echo "<option value='' disabled>Belum ada rekening terdaftar!</option>";
-                                }
-                                ?>
-                            </select>
+                            <label class="form-label small fw-semibold text-secondary">Jumlah Barang Yang Ditukar (Dus)</label>
+                            <input type="number" name="jumlah" class="form-control" min="1" placeholder="Contoh: 1" required>
                         </div>
-
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold text-secondary">Rincian Keluhan Pelanggan</label>
-                            <textarea name="keterangan" class="form-control" rows="5" placeholder="Tulis rincian di sini... Contoh: Toko Berkah komplain 2 dus penyok, minta refund ke rekening BCA." required></textarea>
+                            <label class="form-label small fw-semibold text-secondary">Alasan / Rincian Penukaran</label>
+                            <textarea name="keterangan" class="form-control" rows="4" placeholder="Contoh: 1 Dus bocor di perjalanan, tukar dengan varian yang sama." required></textarea>
                         </div>
-
-                        <button type="submit" name="btn_simpan_retur" class="btn btn-danger w-100 fw-semibold">
-                            <i class="fa-solid fa-floppy-disk me-2"></i>Simpan Laporan Keluhan
+                        <button type="submit" name="btn_simpan_retur" class="btn btn-danger w-100 fw-semibold py-2">
+                            <i class="fa-solid fa-paper-plane me-2"></i>Kirim Keluhan ke Manajer
                         </button>
                     </form>
                 </div>
@@ -144,8 +148,8 @@ if (isset($_GET['hapus'])) {
 
         <div class="col-12 col-xl-8">
             <div class="card mb-4 shadow-sm border-0" style="border-radius: 12px;">
-                <div class="card-header bg-danger text-white py-3" style="border-radius: 12px 12px 0 0;">
-                    <i class="fas fa-table me-1"></i> Daftar Riwayat Komplain Masuk
+                <div class="card-header bg-danger text-white py-3">
+                    <i class="fas fa-table me-1"></i> Monitoring & Otorisasi Tukar Barang
                 </div>
                 <div class="card-body bg-white text-dark p-0">
                     <div class="table-responsive">
@@ -154,59 +158,57 @@ if (isset($_GET['hapus'])) {
                                 <tr>
                                     <th class="py-3 px-3" style="width: 5%;">No</th>
                                     <th class="py-3" style="width: 15%;">Tanggal</th>
-                                    <th class="py-3 text-center" style="width: 12%;">Qty</th>
-                                    <th class="py-3" style="width: 53%;">Rincian Informasi Keluhan & Rekening</th>
-                                    <th class="py-3 text-center" style="width: 15%;">Aksi</th>
+                                    <th class="py-3 text-center" style="width: 10%;">Qty</th>
+                                    <th class="py-3" style="width: 45%;">Alasan Penukaran</th>
+                                    <th class="py-3 text-center" style="width: 25%;">Otorisasi / Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
                                 $no = 1;
-                                $query_retur = mysqli_query($koneksi, "
-                                    SELECT retur.*, rekening.nama_bank, rekening.no_rekening, rekening.atas_nama
-                                    FROM retur 
-                                    LEFT JOIN rekening ON retur.id_rekening = rekening.id 
-                                    ORDER BY retur.$col_id DESC
-                                ");
+                                $query_retur = mysqli_query($koneksi, "SELECT * FROM retur ORDER BY $col_id DESC");
 
-                                if ($query_retur && mysqli_num_rows($query_retur) > 0) {
-                                    while ($row = mysqli_fetch_assoc($query_retur)) {
+                                while ($row = mysqli_fetch_assoc($query_retur)) {
+                                    $status = $row['status_retur'];
+                                    $badge_class = "bg-warning text-dark";
+                                    if ($status == 'Disetujui') $badge_class = "bg-success text-white";
+                                    if ($status == 'Ditolak') $badge_class = "bg-danger text-white";
                                 ?>
-                                        <tr>
-                                            <td class="px-3 fw-bold"><?= $no++; ?></td>
-                                            <td>
-                                                <span class="text-muted small"><i class="fa-regular fa-calendar me-1"></i></span>
-                                                <?= (!empty($row[$col_tgl])) ? date('d/m/Y', strtotime($row[$col_tgl])) : date('d/m/Y'); ?>
-                                            </td>
-                                            <td class="text-center fw-bold text-danger">
-                                                <?= isset($row[$col_jml]) ? $row[$col_jml] : '0'; ?> Dus
-                                            </td>
-                                            <td>
-                                                <div class="p-3 bg-light rounded text-dark mb-1" style="border-left: 4px solid #dc3545; font-size: 14px;">
-                                                    <?= isset($row[$col_ket]) ? htmlspecialchars($row[$col_ket]) : '-'; ?>
-                                                </div>
-                                                <small class="text-secondary d-block px-1">
-                                                    <i class="fa-solid fa-credit-card me-1"></i> Rekening Ganti Rugi:
-                                                    <?php if (!empty($row['nama_bank'])): ?>
-                                                        <span class="badge bg-secondary"><?= htmlspecialchars($row['nama_bank']); ?></span>
-                                                        <strong><?= htmlspecialchars($row['no_rekening']); ?></strong> (a.n <?= htmlspecialchars($row['atas_nama']); ?>)
-                                                    <?php else: ?>
-                                                        <span class="text-muted italic">Belum dipilih / Cash</span>
-                                                    <?php endif; ?>
-                                                </small>
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="index.php?page=retur&hapus=<?= $row[$col_id]; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus arsip komplain ini?')">
-                                                    <i class="fa-solid fa-trash-can"></i> Hapus
+                                    <tr>
+                                        <td class="px-3 fw-bold"><?= $no++; ?></td>
+                                        <td class="small"><?= date('d/m/Y', strtotime($row[$col_tgl])); ?></td>
+                                        <td class="text-center fw-bold text-danger"><?= $row[$col_jml]; ?> Dus</td>
+                                        <td>
+                                            <div class="p-2 bg-light rounded text-dark" style="font-size: 13px; border-left: 3px solid #dc3545;">
+                                                <span class="text-primary fw-bold">Nota Asli: #<?= $row['id_penjualan']; ?></span><br>
+                                                <?= htmlspecialchars($row[$col_ket]); ?>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge <?= $badge_class ?> mb-2 d-block py-1 px-2 mx-auto" style="max-width: 100px; font-size:11px;">
+                                                <?= $status; ?>
+                                            </span>
+
+                                            <?php if (in_array($level_user, ['Admin', 'Manajer'])): ?>
+                                                <?php if ($status == 'Pending'): ?>
+                                                    <div class="btn-group btn-group-sm w-100 px-2">
+                                                        <a href="index.php?page=retur&action=setujui&id=<?= $row[$col_id]; ?>" class="btn btn-success fw-bold text-white" onclick="return confirm('Setujui proses tukar barang ini?')">
+                                                            <i class="fa-solid fa-check"></i> Setuju
+                                                        </a>
+                                                        <a href="index.php?page=retur&action=tolak&id=<?= $row[$col_id]; ?>" class="btn btn-secondary fw-bold" onclick="return confirm('Tolak permintaan ini?')">
+                                                            <i class="fa-solid fa-ban"></i> Tolak
+                                                        </a>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <a href="index.php?page=retur&hapus=<?= $row[$col_id]; ?>" class="btn btn-xs text-danger small mt-1 d-inline-block" onclick="return confirm('Hapus permanen arsip log ini?')" style="font-size: 11px;">
+                                                    <i class="fa-solid fa-trash-can"></i> Hapus Arsip
                                                 </a>
-                                            </td>
-                                        </tr>
-                                <?php
-                                    }
-                                } else {
-                                    echo "<tr><td colspan='5' class='text-center py-4 text-muted'>Belum ada catatan keluhan masuk.</td></tr>";
-                                }
-                                ?>
+                                            <?php else: ?>
+                                                <small class="text-muted italic" style="font-size: 11px;">Kunci Otoritas</small>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
                             </tbody>
                         </table>
                     </div>

@@ -161,10 +161,7 @@ $diskon_aktif = $data_diskon['persen_diskon'] ?? 5;
             }
         }
 
-        // Jalankan saat pertama kali halaman dimuat
         toggleQRInput();
-
-        // Jalankan saat pilihan select diubah oleh admin
         tipeSelect.addEventListener("change", toggleQRInput);
     });
 </script>

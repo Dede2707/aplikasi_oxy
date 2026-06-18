@@ -46,7 +46,7 @@ $tab_aktif = isset($_GET['tab']) ? mysqli_real_escape_string($koneksi, $_GET['ta
                                 <th>Alamat Kirim</th>
                                 <th>Jumlah Produk</th>
                                 <th>Total Harga</th>
-                                <th>Status Order</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -81,7 +81,7 @@ $tab_aktif = isset($_GET['tab']) ? mysqli_real_escape_string($koneksi, $_GET['ta
                                     echo "<td>" . htmlspecialchars($alamat_kirim) . "</td>";
                                     echo "<td class='text-center fw-bold'>" . $jumlah_produk . "</td>";
                                     echo "<td class='text-end fw-bold'>Rp " . number_format($total_harga, 0, ',', '.') . "</td>";
-                                    echo "<td class='text-center'><span class='badge " . $badge . "'>" . htmlspecialchars($row['status_order'] ?? 'Pending') . "</span></td>";
+
                                     echo "</tr>";
                                 }
                             } else {

@@ -9,6 +9,10 @@ if (isset($_SESSION['admin'])) {
     header("Location: index.php");
     exit();
 }
+if (isset($_POST['pelanggan'])) {
+    header("Location: order_pelanggan.php");
+    exit();
+}
 
 // --- OTOMATIS MENCARI TABEL LOGIN YANG ADA ---
 $tabel_valid = "";
@@ -151,7 +155,7 @@ if (isset($_POST['login'])) {
     <div class="card card-login p-4">
         <div class="text-center my-3">
             <h3 class="fw-bold text-light-custom"><i class="fa-solid fa-droplet me-2 text-info"></i>Oxywater App</h3>
-            <p class="text-muted-custom small">Silakan masuk untuk mengelola manajemen aplikasi</p>
+            <p class="text-muted-custom small">Silakan masuk aplikasi</p>
         </div>
         <form action="" method="POST" class="mt-2">
             <div class="mb-3">
@@ -169,8 +173,11 @@ if (isset($_POST['login'])) {
                 </div>
             </div>
             <button type="submit" name="login" class="btn btn-custom w-100 py-2 fw-bold rounded-3 shadow-sm">
-                <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk
-            </button>
+                </i>Masuk
+            </button><br><br>
+            <a href="order_pelanggan.php" class="btn btn-custom w-100 py-2 fw-bold rounded-3 shadow-sm">
+                Order Now
+            </a>
         </form>
     </div>
 </body>

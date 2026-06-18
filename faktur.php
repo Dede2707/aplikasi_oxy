@@ -1,29 +1,38 @@
 <?php
-// Koneksi ke database wajib disertakan di paling atas
+// 1. Pastikan koneksi database wajib disertakan di paling atas
 include "koneksi.php";
 
-if (!isset($_GET['id'])) {
-    echo "ID Transaksi tidak ditemukan.";
+// 2. Cek apakah parameter ID ada di URL, jika tidak ada stop proses agar tidak blank
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    echo "<h3 style='text-align:center; margin-top:50px; font-family:sans-serif;'>Error: ID Transaksi tidak ditemukan di URL.</h3>";
     exit;
 }
 
 $id_penjualan = (int)$_GET['id'];
-$mode = $_GET['mode'] ?? 'faktur'; // default ke mode faktur jika tidak ditentukan
+$mode = isset($_GET['mode']) ? $_GET['mode'] : 'faktur'; // default ke mode faktur
 
-// Ambil data transaksi berdasarkan ID
+// 3. Ambil data transaksi berdasarkan ID
 $query = mysqli_query($koneksi, "SELECT * FROM penjualan WHERE id_penjualan = $id_penjualan");
 $data  = mysqli_fetch_assoc($query);
 
 if (!$data) {
-    echo "Data transaksi tidak ditemukan di database.";
+    echo "<h3 style='text-align:center; margin-top:50px; font-family:sans-serif;'>Data transaksi tidak ditemukan di database.</h3>";
     exit;
 }
 
-// Karena tabel penjualan Anda tidak menyimpan nama produk, kita buat teks default representatif
-$nama_produk_default = "Oxywater Air Minum Kesehatan";
-$harga_satuan_perkiraan = $data['total_harga'] / $data['jumlah_produk'];
+// 4. Deteksi otomatis nama produk dari kolom alamat_kirim
+$nama_produk_tampil = "Oxywater Air Minum Kesehatan";
+if (!empty($data['alamat_kirim'])) {
+    preg_match('/Produk:\s*([^|]+)/', $data['alamat_kirim'], $matches);
+    if (isset($matches[1]) && trim($matches[1]) != "") {
+        $nama_produk_tampil = "Oxywater Varian " . trim($matches[1]);
+    }
+}
 
-// --- JALANKAN LOGIKA PERFORMA PRINT OTOMATIS SAAT HALAMAN DIBUKA ---
+// 5. Hitung harga satuan perkiraan
+$harga_satuan_perkiraan = $data['jumlah_produk'] > 0 ? $data['total_harga'] / $data['jumlah_produk'] : 0;
+
+// 6. JALANKAN PRINT OTOMATIS SAAT HALAMAN SELESAI DI-LOAD
 echo "<script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); } }</script>";
 
 if ($mode == 'struk') {
@@ -36,7 +45,7 @@ if ($mode == 'struk') {
 
     <head>
         <meta charset="UTF-8">
-        <title>Stok Penjualan - Struk #<?= $data['id_penjualan'] ?></title>
+        <title>Struk #<?= $data['id_penjualan'] ?></title>
         <style>
             @page {
                 size: auto;
@@ -58,10 +67,6 @@ if ($mode == 'struk') {
 
             .text-right {
                 text-align: right;
-            }
-
-            .clear {
-                clear: both;
             }
 
             .line {
@@ -109,21 +114,16 @@ if ($mode == 'struk') {
             <p>Sistem Manajemen Penjualan Resmi</p>
             <p>Depot Utama Distribusi Oxywater</p>
         </div>
-
         <div class="line"></div>
-
         <div class="meta-transaksi">
             <div>No. Nota : #<?= $data['id_penjualan'] ?></div>
             <div>Tanggal : <?= date('d/m/Y H:i', strtotime($data['tgl_penjualan'])) ?></div>
-            <div>Kasir : Admin Gudang</div>
             <div>Pelanggan: <?= htmlspecialchars($data['nama_pelanggan']) ?></div>
         </div>
-
         <div class="line"></div>
-
         <table class="tabel-item">
             <tr>
-                <td colspan="3"><?= $nama_produk_default ?></td>
+                <td colspan="3"><?= htmlspecialchars($nama_produk_tampil) ?></td>
             </tr>
             <tr>
                 <td><?= $data['jumlah_produk'] ?> Dus x</td>
@@ -131,18 +131,14 @@ if ($mode == 'struk') {
                 <td class="text-right">Rp <?= number_format($data['total_harga'], 0, ',', '.') ?></td>
             </tr>
         </table>
-
         <div class="line"></div>
-
         <table class="tabel-item totalan">
             <tr>
                 <td>TOTAL AKHIR :</td>
                 <td class="text-right">Rp <?= number_format($data['total_harga'], 0, ',', '.') ?></td>
             </tr>
         </table>
-
         <div class="line"></div>
-
         <div class="text-center" style="font-size: 10px; margin-top: 10px;">
             Terima Kasih Atas Kunjungan Anda<br>
             Periksa Kembali Barang Sebelum Pergi
@@ -161,10 +157,10 @@ if ($mode == 'struk') {
 
     <head>
         <meta charset="UTF-8">
-        <title>Faktur Penjualan - #<?= $data['id_penjualan'] ?></title>
+        <title>Faktur - #<?= $data['id_penjualan'] ?></title>
         <style>
             body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Segoe UI', sans-serif;
                 color: #333;
                 font-size: 14px;
                 margin: 30px;
@@ -235,10 +231,6 @@ if ($mode == 'struk') {
                 border-bottom: 1px solid #dee2e6;
             }
 
-            .tabel-faktur tr:nth-child(even) {
-                background-color: #fdfdfd;
-            }
-
             .total-box {
                 display: flex;
                 justify-content: flex-end;
@@ -249,10 +241,6 @@ if ($mode == 'struk') {
                 font-size: 16px;
             }
 
-            .total-table td {
-                padding: 8px 0;
-            }
-
             .grand-total {
                 font-size: 18px;
                 font-weight: bold;
@@ -261,22 +249,20 @@ if ($mode == 'struk') {
             }
 
             .Tanda-tangan {
-                margin-top: 5px;
+                margin-top: 40px;
                 display: flex;
-                justify-content: dashed;
-                text-align: center;
                 justify-content: space-between;
                 padding: 0 40px;
+                text-align: center;
             }
 
             .space-ttd {
-                height: 70px;
+                height: 60px;
             }
         </style>
     </head>
 
     <body>
-
         <div class="header-faktur">
             <div class="logo-area">
                 <h1>OXYWATER APP</h1>
@@ -291,7 +277,7 @@ if ($mode == 'struk') {
         <div class="info-billing">
             <div>
                 <strong style="color:#0d6efd;">Diterbitkan Kepada:</strong>
-                <p class="fw-bold" style="margin-top:5px; font-size:16px;"><b><?= htmlspecialchars($data['nama_pelanggan']) ?></b></p>
+                <p style="margin-top:5px; font-size:16px;"><b><?= htmlspecialchars($data['nama_pelanggan']) ?></b></p>
                 <p>Pelanggan Setia Oxywater</p>
             </div>
             <div style="text-align: right;">
@@ -315,7 +301,7 @@ if ($mode == 'struk') {
                 <tr>
                     <td>1</td>
                     <td>
-                        <strong><?= $nama_produk_default ?></strong><br>
+                        <strong><?= htmlspecialchars($nama_produk_tampil) ?></strong><br>
                         <span style="font-size:12px; color:#777;">Pasokan Resmi Segar dari Gudang Pusat</span>
                     </td>
                     <td style="text-align: right;">Rp <?= number_format($harga_satuan_perkiraan, 0, ',', '.') ?></td>
@@ -331,18 +317,12 @@ if ($mode == 'struk') {
                     <td>Subtotal Barang:</td>
                     <td style="text-align: right;">Rp <?= number_format($data['total_harga'], 0, ',', '.') ?></td>
                 </tr>
-                <tr>
-                    <td>Potongan Harga:</td>
-                    <td style="text-align: right;">Rp 0</td>
-                </tr>
                 <tr class="grand-total">
                     <td>Total Bayar:</td>
                     <td style="text-align: right;">Rp <?= number_format($data['total_harga'], 0, ',', '.') ?></td>
                 </tr>
             </table>
         </div>
-
-        <div class="space-ttd"></div>
 
         <div class="Tanda-tangan">
             <div>
@@ -351,12 +331,11 @@ if ($mode == 'struk') {
                 <p>( ____________________ )</p>
             </div>
             <div>
-                <p>Hormat Kami, Hormat Gudang</p>
+                <p>Hormat Kami,</p>
                 <div class="space-ttd"></div>
                 <p>( Admin Oxywater )</p>
             </div>
         </div>
-
     </body>
 
     </html>

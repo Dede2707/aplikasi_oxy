@@ -123,17 +123,6 @@ $level_user     = strtolower(trim($level_user_raw));
                                     <i class="fa-solid fa-crown text-warning me-3"></i>Pelanggan Loyal
                                 </a>
                             </li>
-                        <?php endif; ?>
-
-                        <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
-                            <li class="nav-item">
-                                <a href="index.php?page=stok" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'stok' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-boxes-stacked me-3"></i>Data Stok
-                                </a>
-                            </li>
-                        <?php endif; ?>
-
-                        <?php if ($level_user === 'admin' || $level_user === 'staff kasir' || $level_user === 'kasir'): ?>
                             <li class="nav-item">
                                 <a href="index.php?page=retur" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'retur' ? 'active' : '' ?>">
                                     <i class="fa-solid fa-right-left me-3"></i>Retur Produk
@@ -142,6 +131,16 @@ $level_user     = strtolower(trim($level_user_raw));
                         <?php endif; ?>
 
                         <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
+                            <li class="nav-item">
+                                <a href="index.php?page=stok" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'stok' ? 'active' : '' ?>">
+                                    <i class="fa-solid fa-boxes-stacked me-3"></i>Data Stok
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="index.php?page=produksi" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'produksi' ? 'active' : '' ?>">
+                                    <i class="fa-solid fa-industry me-3"></i>Data Produksi
+                                </a>
+                            </li>
                             <li class="nav-item">
                                 <a href="index.php?page=laporan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'laporan' ? 'active' : '' ?>">
                                     <i class="fa-solid fa-file-invoice-dollar me-3"></i>Laporan
@@ -194,11 +193,20 @@ $level_user     = strtolower(trim($level_user_raw));
                         break;
 
                     case 'stok':
+
                         if ($level_user !== 'admin' && $level_user !== 'gudang') {
                             echo "<script>alert('Akses Ditolak! Menu ini hanya untuk Admin / Staff Gudang.'); window.location.href='index.php';</script>";
                             exit();
                         }
                         include 'stok.php';
+                        break;
+
+                    case 'produksi':
+                        if ($level_user !== 'admin' && $level_user !== 'gudang') {
+                            echo "<script>alert('Akses Ditolak!'); window.location.href='index.php';</script>";
+                            exit();
+                        }
+                        include 'produksi.php'; // Pastikan file ini ada di folder yang sama
                         break;
 
                     case 'retur':
@@ -239,6 +247,17 @@ $level_user     = strtolower(trim($level_user_raw));
 
                     case 'dashboard':
                     default:
+                        // =========================================================================
+                        // INTEGRASI KURS HARGA PRODUK DAN REKENING DATA ADMIN
+                        // =========================================================================
+                        // Ambil Data Penjualan Terakhir Terupdate
+                        $total_penjualan_berhasil = 0;
+                        $res_sales = mysqli_query($koneksi, "SELECT SUM(total_harga) as total FROM penjualan");
+                        if ($res_sales) {
+                            $get_s = mysqli_fetch_assoc($res_sales);
+                            $total_penjualan_berhasil = $get_s['total'] ?? 0;
+                        }
+
                         // ==========================================
                         // ---- DATA GRAFIK 1: 7 RETUR TERAKHIR -----
                         // ==========================================
@@ -253,22 +272,17 @@ $level_user     = strtolower(trim($level_user_raw));
                             }
                         }
 
-                        // ==========================================
-                        // ---- DATA GRAFIK 2: 7 PENJUALAN TERAKHIR -
-                        // ==========================================
                         // =========================================================================
                         // ---- DATA GRAFIK 2: 7 PENJUALAN TERAKHIR (SUDAH DIPERBAIKI) ------------
                         // =========================================================================
                         $label_penjualan = [];
                         $data_penjualan = [];
 
-                        // Query disesuaikan dengan kolom tgl_penjualan dan jumlah_produk
                         $sql_penjualan = "SELECT tgl_penjualan, SUM(jumlah_produk) as total_qty FROM penjualan GROUP BY tgl_penjualan ORDER BY tgl_penjualan ASC LIMIT 7";
                         $query_p = mysqli_query($koneksi, $sql_penjualan);
 
                         if ($query_p) {
                             while ($row = mysqli_fetch_assoc($query_p)) {
-                                // Menggunakan kolom tgl_penjualan untuk label grafik
                                 $label_penjualan[] = date('d/m', strtotime($row['tgl_penjualan']));
                                 $data_penjualan[]  = (int)$row['total_qty'];
                             }
@@ -330,6 +344,9 @@ $level_user     = strtolower(trim($level_user_raw));
                                         <i class="fa-solid fa-chart-pie text-primary me-2"></i>Dashboard Utama
                                     </h5>
                                     <p class="text-muted small mb-0">Selamat datang di Oxywater Management System, PT. Nanoplex Indonesia.</p>
+                                    <div class="mt-2">
+                                        <span class="badge bg-success py-2 px-3 fs-6">Total Pendapatan: Rp <?= number_format($total_penjualan_berhasil, 0, ',', '.'); ?></span>
+                                    </div>
                                 </div>
                             </div>
 
