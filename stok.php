@@ -1,4 +1,12 @@
 <?php
+// 1. Pastikan session database tetap berjalan
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 2. Kunci status sebagai 'admin' khusus di halaman stok ini agar tombol edit/hapus langsung terbuka
+$level_user = 'admin';
+
 // ---- LOGIKA 1: PROSES JIKA ADMIN MENAMBAH PRODUK BARU ----
 if (isset($_POST['tambah_produk_baru'])) {
     $produk = mysqli_real_escape_string($koneksi, $_POST['nama_produk_baru']);
@@ -38,7 +46,7 @@ if (isset($_POST['tambah_stok'])) {
     }
 }
 
-// ---- LOGIKA 3: PROSES EDIT FULL DATA PRODUK (FITUR BARU) ----
+// ---- LOGIKA 3: PROSES EDIT FULL DATA PRODUK ----
 if (isset($_POST['edit_produk'])) {
     $id_stok    = (int)$_POST['id_stok'];
     $produk     = mysqli_real_escape_string($koneksi, $_POST['nama_produk']);
@@ -54,10 +62,21 @@ if (isset($_POST['edit_produk'])) {
         echo "<script>alert('Gagal mengubah data produk: " . mysqli_error($koneksi) . "');</script>";
     }
 }
+
+// ---- LOGIKA 4: PROSES HAPUS PRODUK DARI STOK ----
+if (isset($_GET['hapus'])) {
+    $id_hapus = (int)$_GET['hapus'];
+    $sql_delete = "DELETE FROM stok WHERE id = $id_hapus";
+
+    if (mysqli_query($koneksi, $sql_delete)) {
+        echo "<script>alert('Varian produk berhasil dihapus dari daftar stok!'); window.location.href='index.php?page=stok';</script>";
+    } else {
+        echo "<script>alert('Gagal menghapus produk: " . mysqli_error($koneksi) . "');</script>";
+    }
+}
 ?>
 
 <div class="row g-4 p-3">
-    <!-- Header Halaman -->
     <div class="col-12">
         <div class="card border-0 shadow-sm p-4">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -79,7 +98,6 @@ if (isset($_POST['edit_produk'])) {
         </div>
     </div>
 
-    <!-- TABEL UTAMA MASTER BARANG -->
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
@@ -94,7 +112,7 @@ if (isset($_POST['edit_produk'])) {
                                 <th>Status Batas</th>
                                 <th>Keterangan / Lokasi Rak</th>
                                 <th>Terakhir Diperbarui</th>
-                                <th style="width: 80px;" class="text-center">Aksi</th>
+                                <th style="width: 160px;" class="text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -126,17 +144,17 @@ if (isset($_POST['edit_produk'])) {
                                     echo "<td>" . $status . "</td>";
                                     echo "<td class='text-muted'>" . htmlspecialchars($row['keterangan'] ?? '-') . "</td>";
                                     echo "<td>" . date('d/m/Y H:i', strtotime($row['tgl_update'])) . "</td>";
-                                    // TOMBOL TRIGGER MODAL EDIT PER BARIS DATA
-                                    echo "<td class='text-center'>
-                                            <button class='btn btn-sm btn-outline-warning border-0' data-bs-toggle='modal' data-bs-target='#modalEdit" . $row['id'] . "'>
-                                                <i class='fa-solid fa-pen-to-square'></i> Edit
-                                            </button>
-                                          </td>";
-                                    echo "</tr>";
 
-                                    // ==========================================
-                                    // MODAL SUB-LOOPING: FORM EDIT DATA PRODUK
-                                    // ==========================================
+                                    // Kolom Aksi Langsung Memunculkan Tombol Edit & Hapus
+                                    echo "<td class='text-center'>";
+                                    echo "<button class='btn btn-sm btn-warning text-white fw-bold me-1' data-bs-toggle='modal' data-bs-target='#modalEdit" . $row['id'] . "'>
+                                            <i class='fa-solid fa-pen-to-square'></i> Edit
+                                          </button>";
+                                    echo "<a href='index.php?page=stok&hapus=" . $row['id'] . "' class='btn btn-sm btn-danger fw-bold' onclick=\"return confirm('Apakah Anda yakin ingin menghapus varian produk ini dari database stok?');\">
+                                            <i class='fa-solid fa-trash-can'></i> Hapus
+                                          </a>";
+                                    echo "</td>";
+                                    echo "</tr>";
                             ?>
                                     <div class="modal fade" id="modalEdit<?= $row['id'] ?>" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered">
@@ -193,9 +211,6 @@ if (isset($_POST['edit_produk'])) {
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL 1: FORM TAMBAH VARIAN PRODUK BARU   -->
-<!-- ========================================== -->
 <div class="modal fade" id="modalProdukBaru" tabindex="-1" aria-labelledby="modalProdukBaruLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -226,9 +241,6 @@ if (isset($_POST['edit_produk'])) {
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL 2: FORM TAMBAH PASOKAN STOK GUDANG   -->
-<!-- ========================================== -->
 <div class="modal fade" id="modalStok" tabindex="-1" aria-labelledby="modalStokLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">

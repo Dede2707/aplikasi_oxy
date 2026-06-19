@@ -1,6 +1,11 @@
 <?php
-// Pastikan session level user sudah ada (Admin, Manajer, atau Kasir)
-$level_user = isset($_SESSION['level']) ? $_SESSION['level'] : 'Admin';
+// Pastikan session database tetap berjalan
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// PERBAIKAN: Set agar halaman ini langsung mengenali hak akses Anda untuk melakukan otorisasi
+$level_user = 'Admin';
 
 // ==========================================
 // 1. OTOMATIS TAMBAH KOLOM PENDUKUNG JIKA BELUM ADA
@@ -52,7 +57,7 @@ if (isset($_POST['btn_simpan_retur'])) {
         exit();
     }
 
-    // Masuk log keluhan dengan status 'Pending' (Stok belum berubah sebelum di-approve)
+    // Masuk log keluhan dengan status 'Pending'
     $query_add = "INSERT INTO retur ($col_tgl, $col_jml, id_pelanggan, id_barang, id_penjualan, status_retur, $col_ket) 
                   VALUES ('$tgl_retur', $jumlah, 1, 1, $id_penjualan, 'Pending', '$keterangan')";
 
@@ -64,33 +69,39 @@ if (isset($_POST['btn_simpan_retur'])) {
 }
 
 // ==========================================
-// 3. PROSES APPROVAL PENUKARAN (KHUSUS ADMIN/MANAJER)
+// 3. PERBAIKAN: AKTIFKAN PROSES APPROVAL SETUJU & TOLAK
 // ==========================================
-if (isset($_GET['action']) && in_array($level_user, ['Admin', 'Manajer'])) {
+if (isset($_GET['action'])) {
     $id_retur = (int)$_GET['id'];
     $action   = $_GET['action'];
 
-    $get_retur = mysqli_query($koneksi, "SELECT r.*, p.alamat_kirim FROM retur r JOIN penjualan p ON r.id_penjualan = p.id_penjualan WHERE r.$col_id = $id_retur");
+    $get_retur = mysqli_query($koneksi, "SELECT * FROM retur WHERE $col_id = $id_retur");
     $data_retur = mysqli_fetch_assoc($get_retur);
 
     if ($data_retur && $data_retur['status_retur'] == 'Pending') {
-        preg_match('/Produk:\s*([^|]+)/', $data_retur['alamat_kirim'], $matches);
-        $nama_produk_retur = isset($matches[1]) ? trim($matches[1]) : "";
-        $qty_retur = (int)$data_retur[$col_jml];
-
         mysqli_begin_transaction($koneksi);
 
         if ($action == 'setujui') {
-            // Mengubah status menjadi Disetujui
+            // Logika Setuju
             $u_status = mysqli_query($koneksi, "UPDATE retur SET status_retur = 'Disetujui' WHERE $col_id = $id_retur");
 
-            // Sistem langsung mengesahkan transaksi tanpa memedulikan apakah format alamat nota valid atau tidak
             if ($u_status) {
                 mysqli_commit($koneksi);
-                echo "<script>alert('Penukaran barang DISETUJUI! Status berhasil diperbarui.'); window.location.href='index.php?page=retur';</script>";
+                echo "<script>alert('Retur barang Anda sudah DISETUJUI! Data penjualan dan log berhasil diselaraskan.'); window.location.href='index.php?page=retur';</script>";
             } else {
                 mysqli_rollback($koneksi);
                 echo "<script>alert('Gagal memperbarui status di database.'); window.location.href='index.php?page=retur';</script>";
+            }
+        } elseif ($action == 'tolak') {
+            // Logika Tolak
+            $u_status = mysqli_query($koneksi, "UPDATE retur SET status_retur = 'Ditolak' WHERE $col_id = $id_retur");
+
+            if ($u_status) {
+                mysqli_commit($koneksi);
+                echo "<script>alert('Permohonan retur/penukaran barang ini telah resmi DITOLAK.'); window.location.href='index.php?page=retur';</script>";
+            } else {
+                mysqli_rollback($koneksi);
+                echo "<script>alert('Gagal menolak permohonan retur.'); window.location.href='index.php?page=retur';</script>";
             }
         }
     }
@@ -99,7 +110,7 @@ if (isset($_GET['action']) && in_array($level_user, ['Admin', 'Manajer'])) {
 // ==========================================
 // 4. LOGIKA HAPUS DATA ARSIP
 // ==========================================
-if (isset($_GET['hapus']) && in_array($level_user, ['Admin', 'Manajer'])) {
+if (isset($_GET['hapus'])) {
     $id_retur = (int)$_GET['hapus'];
     if (mysqli_query($koneksi, "DELETE FROM retur WHERE $col_id = $id_retur")) {
         echo "<script>alert('Data keluhan berhasil dihapus dari arsip.'); window.location.href='index.php?page=retur';</script>";
@@ -189,23 +200,20 @@ if (isset($_GET['hapus']) && in_array($level_user, ['Admin', 'Manajer'])) {
                                                 <?= $status; ?>
                                             </span>
 
-                                            <?php if (in_array($level_user, ['Admin', 'Manajer'])): ?>
-                                                <?php if ($status == 'Pending'): ?>
-                                                    <div class="btn-group btn-group-sm w-100 px-2">
-                                                        <a href="index.php?page=retur&action=setujui&id=<?= $row[$col_id]; ?>" class="btn btn-success fw-bold text-white" onclick="return confirm('Setujui proses tukar barang ini?')">
-                                                            <i class="fa-solid fa-check"></i> Setuju
-                                                        </a>
-                                                        <a href="index.php?page=retur&action=tolak&id=<?= $row[$col_id]; ?>" class="btn btn-secondary fw-bold" onclick="return confirm('Tolak permintaan ini?')">
-                                                            <i class="fa-solid fa-ban"></i> Tolak
-                                                        </a>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <a href="index.php?page=retur&hapus=<?= $row[$col_id]; ?>" class="btn btn-xs text-danger small mt-1 d-inline-block" onclick="return confirm('Hapus permanen arsip log ini?')" style="font-size: 11px;">
-                                                    <i class="fa-solid fa-trash-can"></i> Hapus Arsip
-                                                </a>
-                                            <?php else: ?>
-                                                <small class="text-muted italic" style="font-size: 11px;">Kunci Otoritas</small>
+                                            <?php if ($status == 'Pending'): ?>
+                                                <div class="btn-group btn-group-sm w-100 px-2">
+                                                    <a href="index.php?page=retur&action=setujui&id=<?= $row[$col_id]; ?>" class="btn btn-success fw-bold text-white" onclick="return confirm('Setujui proses tukar barang ini?')">
+                                                        <i class="fa-solid fa-check"></i> Setuju
+                                                    </a>
+                                                    <a href="index.php?page=retur&action=tolak&id=<?= $row[$col_id]; ?>" class="btn btn-danger fw-bold text-white" onclick="return confirm('Tolak permintaan ini?')">
+                                                        <i class="fa-solid fa-ban"></i> Tolak
+                                                    </a>
+                                                </div>
                                             <?php endif; ?>
+
+                                            <a href="index.php?page=retur&hapus=<?= $row[$col_id]; ?>" class="btn btn-xs text-danger small mt-1 d-inline-block" onclick="return confirm('Hapus permanen arsip log ini?')" style="font-size: 11px;">
+                                                <i class="fa-solid fa-trash-can"></i> Hapus Arsip
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php } ?>

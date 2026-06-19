@@ -1,41 +1,38 @@
 <?php
-// Pastikan path ke file koneksi database sudah benar sesuai project kamu
+// cek_loyalitas.php
 require_once 'koneksi.php';
 
-// Mengabaikan error php jika ada data kosong sementara
-error_reporting(0);
+header('Content-Type: application/json');
 
-$nama = isset($_GET['nama']) ? trim($_GET['nama']) : '';
+$nama = isset($_GET['nama']) ? mysqli_real_escape_string($koneksi, $_GET['nama']) : '';
 
 $response = [
     'status_loyal' => false,
-    'total_transaksi' => 0,
-    'potongan_persen' => 0
+    'potongan_persen' => 0,
+    'total_transaksi' => 0
 ];
 
 if (!empty($nama)) {
-    // Escaping string untuk keamanan SQL Injection
-    $nama_db = mysqli_real_escape_string($koneksi, $nama);
+    // 1. Hitung total riwayat transaksi pelanggan berdasarkan nama
+    $sql_cek = "SELECT COUNT(*) as total FROM penjualan WHERE LOWER(nama_pelanggan) = LOWER('$nama')";
+    $query_cek = mysqli_query($koneksi, $sql_cek);
 
-    // 1. Hitung jumlah transaksi sukses pelanggan ini sebelumnya
-    $q_hitung = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM penjualan WHERE nama_pelanggan = '$nama_db'");
-    $res_hitung = mysqli_fetch_assoc($q_hitung);
-    $total_transaksi = (int)$res_hitung['total'];
+    if ($query_cek) {
+        $data = mysqli_fetch_assoc($query_cek);
+        $total_belanja = (int)$data['total'];
+        $response['total_transaksi'] = $total_belanja;
 
-    $response['total_transaksi'] = $total_transaksi;
+        // 2. AMBIL ATURAN DISKON RESPONSIVE DARI DATABASE (Tabel setting_diskon)
+        $get_diskon = mysqli_query($koneksi, "SELECT persen_diskon FROM setting_diskon WHERE id = 1");
+        $data_diskon = mysqli_fetch_assoc($get_diskon);
+        $diskon_database = $data_diskon['persen_diskon'] ?? 5; // Default 5% jika query gagal
 
-    // 2. Jika transaksi sudah LEBIH DARI 3 KALI (> 3)
-    if ($total_transaksi > 3) {
-        $q_diskon = mysqli_query($koneksi, "SELECT persen_diskon FROM setting_diskon WHERE id = 1 LIMIT 1");
-        $res_diskon = mysqli_fetch_assoc($q_diskon);
-
-        $response['status_loyal'] = true;
-        // Ambil nilai diskon dari database, jika belum diset otomatis beri 5%
-        $response['potongan_persen'] = $res_diskon['persen_diskon'] ? (int)$res_diskon['persen_diskon'] : 5;
+        // Jika sudah belanja lebih dari 3 kali, berikan status loyal dan nominal diskon dari database
+        if ($total_belanja > 3) {
+            $response['status_loyal'] = true;
+            $response['potongan_persen'] = $diskon_database;
+        }
     }
 }
 
-// Set header response berupa JSON resmi
-header('Content-Type: application/json');
 echo json_encode($response);
-exit();

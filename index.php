@@ -42,7 +42,28 @@ $level_user     = strtolower(trim($level_user_raw));
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* Styling Dasar */
+        /* CSS STRUKTUR UTAMA RESPONSIVE SIDEBAR COLLAPSIBLE */
+        #wrapper {
+            display: flex;
+            width: 100%;
+            align-items: stretch;
+            overflow-x: hidden;
+        }
+
+        #sidebar-wrapper {
+            min-width: 260px;
+            max-width: 260px;
+            min-height: 100vh;
+            transition: all 0.25s ease-out;
+            z-index: 1000;
+        }
+
+        #page-content-wrapper {
+            width: 100%;
+            min-height: 100vh;
+            transition: all 0.25s ease-out;
+        }
+
         .nav-link {
             color: #adb5bd;
             transition: all 0.2s;
@@ -55,33 +76,26 @@ $level_user     = strtolower(trim($level_user_raw));
             border-radius: 6px;
         }
 
-        /* Pengaturan Responsif */
+        /* LOGIKA TAMPILAN DESKTOP (PC) */
         @media (min-width: 992px) {
-            .sidebar-sticky {
-                position: fixed;
-                top: 0;
-                bottom: 0;
-                left: 0;
-                z-index: 100;
-                width: 260px;
-                overflow-y: auto;
-            }
-
-            .main-content-offset {
-                margin-left: 260px;
+            #wrapper.toggled #sidebar-wrapper {
+                margin-left: -260px;
+                /* Sembunyikan ke kiri saat dicollapse */
             }
         }
 
-        /* Khusus Tampilan HP (Di bawah 992px) */
+        /* LOGIKA TAMPILAN MOBILE (HP) */
         @media (max-width: 991.98px) {
-            .sidebar-sticky {
-                position: relative;
-                width: 100%;
-                height: auto;
+            #sidebar-wrapper {
+                margin-left: -260px;
+                /* Default bersembunyi di luar layar HP */
+                position: fixed;
+                height: 100vh;
             }
 
-            .main-content-offset {
+            #wrapper.toggled #sidebar-wrapper {
                 margin-left: 0;
+                /* Muncul bergeser dari kiri saat tombol ditekan */
             }
         }
     </style>
@@ -89,92 +103,108 @@ $level_user     = strtolower(trim($level_user_raw));
 
 <body class="bg-light">
 
-    <div class="container-fluid p-0">
-        <div class="row g-0">
+    <div id="wrapper">
 
-            <nav class="col-12 col-lg-3 col-xl-2 bg-dark text-white sidebar-sticky p-3">
+        <nav id="sidebar-wrapper" class="bg-dark text-white p-3 d-flex flex-column justify-content-between">
+            <div>
                 <div class="d-flex justify-content-between align-items-center mb-4 px-2">
                     <div>
                         <h5 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-droplet me-2"></i>Oxywater App</h5>
                         <small class="text-muted d-block" style="font-size: 11px;">PT. NANOPLEX INDONESIA</small>
                         <span class="badge bg-secondary mt-1" style="font-size: 10px;"><?= htmlspecialchars($level_user_raw); ?></span>
                     </div>
-                    <button class="btn btn-outline-light d-lg-none p-1 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#menuUtama">
-                        <i class="fa-solid fa-bars"></i>
+                    <button class="btn btn-sm btn-outline-light d-lg-none" id="sidebar-close">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
 
-                <div class="collapse d-lg-block" id="menuUtama">
-                    <ul class="nav flex-column gap-1">
+                <ul class="nav flex-column gap-1">
+                    <li class="nav-item">
+                        <a href="index.php?page=dashboard" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? 'dashboard') === 'dashboard' ? 'active' : '' ?>">
+                            <i class="fa-solid fa-chart-pie me-3"></i>Dashboard
+                        </a>
+                    </li>
+
+                    <?php if ($level_user === 'admin' || $level_user === 'staff kasir' || $level_user === 'kasir'): ?>
                         <li class="nav-item">
-                            <a href="index.php?page=dashboard" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? 'dashboard') === 'dashboard' ? 'active' : '' ?>">
-                                <i class="fa-solid fa-chart-pie me-3"></i>Dashboard
+                            <a href="index.php?page=penjualan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'penjualan' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-cart-shopping me-3"></i>Data Penjualan
                             </a>
                         </li>
-
-                        <?php if ($level_user === 'admin' || $level_user === 'staff kasir' || $level_user === 'kasir'): ?>
-                            <li class="nav-item">
-                                <a href="index.php?page=penjualan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'penjualan' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-cart-shopping me-3"></i>Data Penjualan
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="index.php?page=pelanggan_loyal" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'pelanggan_loyal' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-crown text-warning me-3"></i>Pelanggan Loyal
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="index.php?page=retur" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'retur' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-right-left me-3"></i>Retur Produk
-                                </a>
-                            </li>
-                        <?php endif; ?>
-
-                        <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
-                            <li class="nav-item">
-                                <a href="index.php?page=stok" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'stok' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-boxes-stacked me-3"></i>Data Stok
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="index.php?page=produksi" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'produksi' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-industry me-3"></i>Data Produksi
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="index.php?page=laporan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'laporan' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-file-invoice-dollar me-3"></i>Laporan
-                                </a>
-                            </li>
-                        <?php endif; ?>
-
-                        <?php if ($level_user === 'admin'): ?>
-                            <li class="nav-item">
-                                <a href="index.php?page=users" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'users' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-user-gear me-3"></i>Tambah User
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="index.php?page=rekening" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'rekening' ? 'active' : '' ?>">
-                                    <i class="fa-solid fa-credit-card me-3"></i>Rekening Perusahaan
-                                </a>
-                            </li>
-                        <?php endif; ?>
-
-                        <li class="nav-item mt-4 border-top pt-3">
-                            <a href="index.php?page=logout" class="nav-link text-danger px-3 py-2.5">
-                                <i class="fa-solid fa-right-from-bracket me-3"></i>Keluar
+                        <li class="nav-item">
+                            <a href="index.php?page=pelanggan_loyal" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'pelanggan_loyal' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-crown text-warning me-3"></i>Pelanggan Loyal
                             </a>
                         </li>
-                    </ul>
-                </div>
+                        <li class="nav-item">
+                            <a class="nav-link text-white <?= ($_GET['page'] == 'kupon') ? 'active bg-primary' : '' ?>" href="index.php?page=kupon">
+                                <i class="fa-solid fa-ticket me-2"></i> Kupon Promo
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="index.php?page=retur" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'retur' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-right-left me-3"></i>Retur Produk
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
+                        <li class="nav-item">
+                            <a href="index.php?page=stok" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'stok' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-boxes-stacked me-3"></i>Data Stok
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="index.php?page=produksi" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'produksi' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-industry me-3"></i>Data Produksi
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="index.php?page=laporan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'laporan' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-file-invoice-dollar me-3"></i>Laporan
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if ($level_user === 'admin'): ?>
+                        <li class="nav-item">
+                            <a href="index.php?page=users" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'users' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-user-gear me-3"></i>Tambah User
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="index.php?page=rekening" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'rekening' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-credit-card me-3"></i>Rekening Perusahaan
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+
+            <div>
+                <ul class="nav flex-column">
+                    <li class="nav-item border-top pt-3">
+                        <a href="index.php?page=logout" class="nav-link text-danger px-3 py-2.5">
+                            <i class="fa-solid fa-right-from-bracket me-3"></i>Keluar
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <div id="page-content-wrapper" class="d-flex flex-column">
+
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-3 py-2 shadow-sm">
+                <button class="btn btn-primary" id="menu-toggle">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <span class="ms-3 fw-semibold text-dark d-none d-sm-inline">Oxywater Management System</span>
             </nav>
 
-            <main class="col-12 col-lg-9 col-xl-10 main-content-offset p-3 p-md-4">
+            <main class="p-3 p-md-4">
                 <?php
                 $page = $_GET['page'] ?? 'dashboard';
 
-                // --- PROTEKSI DAN ROUTING HALAMAN ---
                 switch ($page) {
                     case 'penjualan':
                         if ($level_user !== 'admin' && $level_user !== 'staff kasir' && $level_user !== 'kasir') {
@@ -193,7 +223,6 @@ $level_user     = strtolower(trim($level_user_raw));
                         break;
 
                     case 'stok':
-
                         if ($level_user !== 'admin' && $level_user !== 'gudang') {
                             echo "<script>alert('Akses Ditolak! Menu ini hanya untuk Admin / Staff Gudang.'); window.location.href='index.php';</script>";
                             exit();
@@ -206,7 +235,7 @@ $level_user     = strtolower(trim($level_user_raw));
                             echo "<script>alert('Akses Ditolak!'); window.location.href='index.php';</script>";
                             exit();
                         }
-                        include 'produksi.php'; // Pastikan file ini ada di folder yang sama
+                        include 'produksi.php';
                         break;
 
                     case 'retur':
@@ -233,6 +262,11 @@ $level_user     = strtolower(trim($level_user_raw));
                         include 'users.php';
                         break;
 
+                    // Cari baris pemanggilan halaman lain, lalu selipkan baris kupon ini:
+                    case 'kupon':
+                        include "kupon.php";
+                        break;
+
                     case 'rekening':
                         if ($level_user !== 'admin') {
                             echo "<script>alert('Akses Ditolak! Pengaturan Rekening dikunci khusus Admin.'); window.location.href='index.php';</script>";
@@ -250,7 +284,6 @@ $level_user     = strtolower(trim($level_user_raw));
                         // =========================================================================
                         // INTEGRASI KURS HARGA PRODUK DAN REKENING DATA ADMIN
                         // =========================================================================
-                        // Ambil Data Penjualan Terakhir Terupdate
                         $total_penjualan_berhasil = 0;
                         $res_sales = mysqli_query($koneksi, "SELECT SUM(total_harga) as total FROM penjualan");
                         if ($res_sales) {
@@ -258,9 +291,7 @@ $level_user     = strtolower(trim($level_user_raw));
                             $total_penjualan_berhasil = $get_s['total'] ?? 0;
                         }
 
-                        // ==========================================
                         // ---- DATA GRAFIK 1: 7 RETUR TERAKHIR -----
-                        // ==========================================
                         $label_tanggal = [];
                         $data_jumlah = [];
                         $sql_chart = "SELECT tgl_retur, SUM(jumlah) as total_qty FROM retur GROUP BY tgl_retur ORDER BY tgl_retur ASC LIMIT 7";
@@ -272,15 +303,11 @@ $level_user     = strtolower(trim($level_user_raw));
                             }
                         }
 
-                        // =========================================================================
-                        // ---- DATA GRAFIK 2: 7 PENJUALAN TERAKHIR (SUDAH DIPERBAIKI) ------------
-                        // =========================================================================
+                        // ---- DATA GRAFIK 2: 7 PENJUALAN TERAKHIR -----
                         $label_penjualan = [];
                         $data_penjualan = [];
-
                         $sql_penjualan = "SELECT tgl_penjualan, SUM(jumlah_produk) as total_qty FROM penjualan GROUP BY tgl_penjualan ORDER BY tgl_penjualan ASC LIMIT 7";
                         $query_p = mysqli_query($koneksi, $sql_penjualan);
-
                         if ($query_p) {
                             while ($row = mysqli_fetch_assoc($query_p)) {
                                 $label_penjualan[] = date('d/m', strtotime($row['tgl_penjualan']));
@@ -288,9 +315,7 @@ $level_user     = strtolower(trim($level_user_raw));
                             }
                         }
 
-                        // ==========================================
                         // ---- DATA GRAFIK 3: GRAFIK RETUR BULANAN -
-                        // ==========================================
                         $bulan_labels = [];
                         $bulan_data = [];
                         $tahun_sekarang = date('Y');
@@ -304,9 +329,7 @@ $level_user     = strtolower(trim($level_user_raw));
                             }
                         }
 
-                        // ==========================================
                         // ---- DATA GRAFIK 4: GRAFIK RETUR TAHUNAN -
-                        // ==========================================
                         $tahun_labels = [];
                         $tahun_data = [];
                         $sql_tahun = "SELECT YEAR(tgl_retur) as tahun, SUM(jumlah) as total_qty FROM retur GROUP BY YEAR(tgl_retur) ORDER BY YEAR(tgl_retur) ASC LIMIT 5";
@@ -318,7 +341,6 @@ $level_user     = strtolower(trim($level_user_raw));
                             }
                         }
 
-                        // --- BACKUP DATA JIKA DATABASE MASIH KOSONG ---
                         if (empty($label_tanggal)) {
                             $label_tanggal = [date('d/m')];
                             $data_jumlah = [0];
@@ -340,9 +362,7 @@ $level_user     = strtolower(trim($level_user_raw));
                         <div class="row g-4">
                             <div class="col-12">
                                 <div class="card border-0 shadow-sm p-4">
-                                    <h5 class="fw-bold text-dark mb-1">
-                                        <i class="fa-solid fa-chart-pie text-primary me-2"></i>Dashboard Utama
-                                    </h5>
+                                    <h5 class="fw-bold text-dark mb-1"><i class="fa-solid fa-chart-pie text-primary me-2"></i>Dashboard Utama</h5>
                                     <p class="text-muted small mb-0">Selamat datang di Oxywater Management System, PT. Nanoplex Indonesia.</p>
                                     <div class="mt-2">
                                         <span class="badge bg-success py-2 px-3 fs-6">Total Pendapatan: Rp <?= number_format($total_penjualan_berhasil, 0, ',', '.'); ?></span>
@@ -353,12 +373,8 @@ $level_user     = strtolower(trim($level_user_raw));
                             <div class="col-12 mt-4">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body p-4">
-                                        <h6 class="fw-bold text-dark mb-3">
-                                            <i class="fa-solid fa-cart-shopping text-primary me-2"></i>Tren Penjualan (7 Hari Terakhir)
-                                        </h6>
-                                        <div style="position: relative; height: 300px; width: 100%;">
-                                            <canvas id="chartPenjualanUtama"></canvas>
-                                        </div>
+                                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Tren Penjualan (7 Hari Terakhir)</h6>
+                                        <div style="position: relative; height: 300px; width: 100%;"><canvas id="chartPenjualanUtama"></canvas></div>
                                     </div>
                                 </div>
                             </div>
@@ -366,12 +382,8 @@ $level_user     = strtolower(trim($level_user_raw));
                             <div class="col-12 col-xl-8">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body p-3 p-sm-4">
-                                        <h6 class="fw-bold text-dark mb-3">
-                                            <i class="fa-solid fa-chart-line text-danger me-2"></i>Tren Produk Retur (7 Hari Terakhir)
-                                        </h6>
-                                        <div style="position: relative; height: 300px; width: 100%;">
-                                            <canvas id="chartReturUtama"></canvas>
-                                        </div>
+                                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-line text-danger me-2"></i>Tren Produk Retur (7 Hari Terakhir)</h6>
+                                        <div style="position: relative; height: 300px; width: 100%;"><canvas id="chartReturUtama"></canvas></div>
                                     </div>
                                 </div>
                             </div>
@@ -384,13 +396,9 @@ $level_user     = strtolower(trim($level_user_raw));
                                             <p class="text-muted small">Ingin melihat rincian angka laporan retur bulanan (Januari - Desember) dan tahunan dari tahun aktif ke depan?</p>
                                         </div>
                                         <?php if ($level_user === 'admin' || $level_user === 'gudang'): ?>
-                                            <a href="index.php?page=laporan&tab=penjualan" class="btn btn-primary">
-                                                <i class="fa fa-list"></i> Lihat Laporan Penjualan
-                                            </a>
+                                            <a href="index.php?page=laporan&tab=penjualan" class="btn btn-primary"><i class="fa fa-list"></i> Lihat Laporan Penjualan</a>
                                         <?php else: ?>
-                                            <button class="btn btn-secondary w-100 fw-semibold py-2 mt-3" disabled>
-                                                <i class="fa-solid fa-lock me-2"></i>Laporan Terkunci
-                                            </button>
+                                            <button class="btn btn-secondary w-100 fw-semibold py-2 mt-3" disabled><i class="fa-solid fa-lock me-2"></i>Laporan Terkunci</button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -416,7 +424,6 @@ $level_user     = strtolower(trim($level_user_raw));
                         </div>
 
                         <script>
-                            // Chart Tren Retur 7 Hari
                             new Chart(document.getElementById('chartReturUtama').getContext('2d'), {
                                 type: 'line',
                                 data: {
@@ -436,8 +443,6 @@ $level_user     = strtolower(trim($level_user_raw));
                                     maintainAspectRatio: false
                                 }
                             });
-
-                            // Chart Bulanan Retur
                             new Chart(document.getElementById('chartBulanan').getContext('2d'), {
                                 type: 'bar',
                                 data: {
@@ -454,8 +459,6 @@ $level_user     = strtolower(trim($level_user_raw));
                                     maintainAspectRatio: false
                                 }
                             });
-
-                            // Chart Tahunan Retur
                             new Chart(document.getElementById('chartTahunan').getContext('2d'), {
                                 type: 'line',
                                 data: {
@@ -473,8 +476,6 @@ $level_user     = strtolower(trim($level_user_raw));
                                     maintainAspectRatio: false
                                 }
                             });
-
-                            // Chart Tren Penjualan Utama
                             new Chart(document.getElementById('chartPenjualanUtama').getContext('2d'), {
                                 type: 'bar',
                                 data: {
@@ -502,6 +503,26 @@ $level_user     = strtolower(trim($level_user_raw));
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Logika Klik tombol buka/tutup menu samping
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebarClose = document.getElementById('sidebar-close');
+        const wrapper = document.getElementById('wrapper');
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                wrapper.classList.toggle('toggled');
+            });
+        }
+
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', function(e) {
+                e.preventDefault();
+                wrapper.classList.remove('toggled');
+            });
+        }
+    </script>
 </body>
 
 </html>
