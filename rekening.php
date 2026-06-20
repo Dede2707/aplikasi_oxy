@@ -124,28 +124,7 @@ $diskon_aktif = $data_diskon['persen_diskon'] ?? 5;
         </div>
     </div>
 
-    <div class="col-12 col-md-6">
-        <div class="card border-0 shadow-sm p-4 h-100 border-start border-primary border-4">
-            <h6 class="fw-bold text-dark mb-3">
-                <i class="fa-solid fa-percent text-primary me-2"></i>Diskon Pelanggan Loyal
-            </h6>
-            <p class="text-muted small">Tentukan berapa persen potongan harga otomatis yang akan diterima oleh pelanggan jika mereka terdeteksi sudah berbelanja lebih dari 3 kali.</p>
 
-            <form action="" method="POST" class="mt-4">
-                <div class="mb-3">
-                    <label class="form-label text-muted small fw-bold">Besar Potongan Diskon :</label>
-                    <div class="input-group">
-                        <input type="number" name="persen_diskon" class="form-control form-control-lg fw-bold text-center text-primary" min="1" max="10" value="<?= $diskon_aktif ?>" required>
-                        <span class="input-group-text bg-primary text-white fw-bold">%</span>
-                    </div>
-                    <small class="text-muted d-block mt-2">* Batas inputan diskon valid yang diizinkan sistem: **1% sampai 10%**.</small>
-                </div>
-                <button type="submit" name="update_diskon" class="btn btn-primary fw-semibold w-100 py-2 mt-2">
-                    <i class="fa-solid fa-check-double me-1"></i> Terapkan Aturan Diskon
-                </button>
-            </form>
-        </div>
-    </div>
 </div>
 
 <script>

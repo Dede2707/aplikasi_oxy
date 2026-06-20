@@ -107,7 +107,7 @@ if (isset($_GET['hapus'])) {
                             <tr>
                                 <th style="width: 60px;">No</th>
                                 <th>Nama Varian Produk</th>
-                                <th>Harga Jual / Dus</th>
+                                <th>Harga Jual </th>
                                 <th class="text-center">Sisa Stok (Qty)</th>
                                 <th>Status Batas</th>
                                 <th>Keterangan / Lokasi Rak</th>
@@ -140,7 +140,7 @@ if (isset($_GET['hapus'])) {
                                     echo "<td>" . $no++ . "</td>";
                                     echo "<td class='fw-semibold text-dark'>" . htmlspecialchars($row['nama_produk']) . "</td>";
                                     echo "<td class='fw-bold text-success'>Rp " . number_format($harga_dus, 0, ',', '.') . "</td>";
-                                    echo "<td class='text-center fw-bold text-primary'>" . $stok . " Dus</td>";
+                                    echo "<td class='text-center fw-bold text-primary'>" . $stok . " </td>";
                                     echo "<td>" . $status . "</td>";
                                     echo "<td class='text-muted'>" . htmlspecialchars($row['keterangan'] ?? '-') . "</td>";
                                     echo "<td>" . date('d/m/Y H:i', strtotime($row['tgl_update'])) . "</td>";

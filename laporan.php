@@ -146,7 +146,7 @@ $total_hari_ini = $r_hari_ini['total'] ?? 0;
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="small text-white-50 mb-1 fw-semibold">Retur Hari Ini (Disetujui)</h6>
-                        <h3 class="fw-bold mb-0"><?= $total_hari_ini ?> <span style="font-size: 13px; font-weight: normal;">Dus</span></h3>
+                        <h3 class="fw-bold mb-0"><?= $total_hari_ini ?> <span style="font-size: 13px; font-weight: normal;"></span></h3>
                     </div>
                     <i class="fa-solid fa-calendar-day fa-2xl text-white-50"></i>
                 </div>

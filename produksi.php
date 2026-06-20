@@ -84,7 +84,7 @@ if (isset($_GET['hapus'])) {
             </select>
         </div>
         <div class="col-md-3">
-            <input type="number" name="jumlah_masuk" class="form-control" placeholder="Jumlah Masuk (Dus)" min="1" required>
+            <input type="number" name="jumlah_masuk" class="form-control" placeholder="Jumlah Masuk " min="1" required>
         </div>
         <div class="col-md-3">
             <input type="text" name="keterangan" class="form-control" placeholder="Catatan Tambahan (Misal: Shift A)">
@@ -114,7 +114,7 @@ if (isset($_GET['hapus'])) {
             ?>
                     <tr>
                         <td><?= $tgl_tampil; ?></td>
-                        <td class="fw-bold text-success">+ <?= $d['jumlah_masuk']; ?> Dus</td>
+                        <td class="fw-bold text-success">+ <?= $d['jumlah_masuk']; ?> </td>
                         <td><?= htmlspecialchars($d['keterangan']); ?></td>
                         <td class="text-center">
                             <a href="index.php?page=produksi&hapus=true&tgl=<?= $d['tgl_produksi']; ?>&jml=<?= $d['jumlah_masuk']; ?>&ket=<?= urlencode($d['keterangan']); ?>"

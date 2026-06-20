@@ -14,14 +14,27 @@ if (isset($_GET['page']) && $_GET['page'] == 'keluhan') {
     $tampilan = "form_keluhan";
 }
 
+
+
 // [PROSES TAHAP 1] - Lanjut ke Pembayaran Produk
 if (isset($_POST['proses_checkout'])) {
+    // Ambil kode promo dari input
+    $kode_promo = strtoupper(trim($_POST['kode_promo']));
+    $diskon = 0;
+
+    // Logika Diskon (Contoh: KODE 'HEMAT10' = 10%)
+    if ($kode_promo == "HEMAT10") {
+        $diskon = 0.10;
+    }
+
     $_SESSION['temp_order'] = [
         'nama'          => mysqli_real_escape_string($koneksi, $_POST['nama_pelanggan']),
         'telp'          => mysqli_real_escape_string($koneksi, $_POST['no_telp']),
         'alamat'        => mysqli_real_escape_string($koneksi, $_POST['alamat']),
         'nama_produk'   => mysqli_real_escape_string($koneksi, $_POST['nama_produk']),
         'qty'           => intval($_POST['qty_beli']),
+        'kode_promo'    => $kode_promo,
+        'diskon_persen' => $diskon
     ];
 
     $nama_p = $_SESSION['temp_order']['nama_produk'];
@@ -29,8 +42,13 @@ if (isset($_POST['proses_checkout'])) {
 
     if ($cek_p && mysqli_num_rows($cek_p) > 0) {
         $dp = mysqli_fetch_assoc($cek_p);
-        $harga_barang_asli = (int)$dp['harga_per_dus'];
-        $_SESSION['temp_order']['total_harga'] = $harga_barang_asli * $_SESSION['temp_order']['qty'];
+        $harga_asli = (int)$dp['harga_per_dus'];
+        $total_awal = $harga_asli * $_SESSION['temp_order']['qty'];
+
+        // Hitung total akhir
+        $total_akhir = $total_awal - ($total_awal * $diskon);
+        $_SESSION['temp_order']['total_harga'] = $total_akhir;
+
         $tampilan = "instruksi_bayar";
     } else {
         echo "<script>alert('Produk tidak ditemukan!'); window.location.href='order_pelanggan.php';</script>";
@@ -206,11 +224,18 @@ if (isset($_GET['action']) && $_GET['action'] == 'selesai') {
                                     </div>
                                 </div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Kode Promo (Opsional)</label>
+                                <input type="text" name="kode_promo" class="form-control" placeholder="Masukkan kode hemat (misal: HEMAT10)">
+                            </div>
                             <button type="submit" name="proses_checkout" class="btn btn-info w-100 fw-bold mt-4 text-uppercase">Lanjut Ke Pembayaran <i class="fa-solid fa-chevron-right small ms-1"></i></button>
                         </form>
                     </div>
 
                 <?php elseif ($tampilan == "instruksi_bayar"): $d = $_SESSION['temp_order']; ?>
+                    <li class="list-group-item bg-transparent text-white border-secondary">
+                        Status Promo: <strong><?= !empty($d['kode_promo']) ? $d['kode_promo'] . " (" . ($d['diskon_persen'] * 100) . "%)" : "Tidak ada"; ?></strong>
+                    </li>
                     <div class="card card-custom shadow-lg">
                         <h3 class="text-center mb-4 text-warning fw-bold"><i class="fa-solid fa-credit-card me-1"></i> Instruksi Bayar</h3>
                         <div class="bg-dark bg-opacity-50 p-3 rounded-3 mb-3 border border-secondary text-center">
@@ -224,7 +249,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'selesai') {
                         </ul>
                         <div class="bg-light text-dark p-3 rounded-3 mb-4 text-center">
                             <p class="mb-1 small text-uppercase fw-bold text-muted">Transfer Ke Rekening BCA</p>
-                            <h3 class="fw-bold text-primary mb-1">872-0981-221</h3>
+                            <h3 class="fw-bold text-primary mb-1"></h3>
                             <p class="small mb-0 text-secondary">A/N PT. Oxywater Indonesia</p>
                         </div>
                         <form action="order_pelanggan.php" method="POST">

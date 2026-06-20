@@ -149,7 +149,7 @@ if (isset($_GET['hapus'])) {
                         <div class="mb-3">
                             <label class="form-label small fw-semibold text-muted">Level Hak Akses</label>
                             <select name="level" class="form-select" required>
-                                <option value="Admin">Admin</option>
+                                <option value="Admin">Manajer</option>
                                 <option value="Staff Kasir">Staff Kasir</option>
                                 <option value="Gudang">Gudang</option>
                             </select>
