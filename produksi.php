@@ -20,7 +20,8 @@ if (isset($_POST['simpan'])) {
     mysqli_begin_transaction($koneksi);
 
     // 1. Simpan ke tabel riwayat produksi 
-    $query_produksi = mysqli_query($koneksi, "INSERT INTO produksi (jumlah_masuk, tgl_produksi, keterangan) VALUES ('$jml', '$tgl', '$keterangan_lengkap')");
+    // Pastikan $nama_produk sudah didefinisikan sebelumnya (sudah ada di baris 10)
+    $query_produksi = mysqli_query($koneksi, "INSERT INTO produksi (jumlah_masuk, tgl_produksi, keterangan, varian_produk) VALUES ('$jml', '$tgl', '$keterangan_lengkap', '$nama_produk')");
 
     // 2. UPDATE STOK: Otomatis bertambah
     $query_stok = mysqli_query($koneksi, "UPDATE stok SET jumlah_stok = jumlah_stok + $jml, tgl_update = NOW() WHERE nama_produk = '$nama_produk'");

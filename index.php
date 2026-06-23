@@ -159,6 +159,7 @@ $level_user     = strtolower(trim($level_user_raw));
                                 <i class="fa-solid fa-industry me-3"></i>Data Produksi
                             </a>
                         </li>
+
                         <li class="nav-item">
                             <a href="index.php?page=laporan" class="nav-link px-3 py-2.5 <?= ($_GET['page'] ?? '') === 'laporan' ? 'active' : '' ?>">
                                 <i class="fa-solid fa-file-invoice-dollar me-3"></i>Laporan

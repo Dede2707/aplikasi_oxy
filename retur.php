@@ -10,14 +10,24 @@ $level_user = 'Admin';
 // ==========================================
 // 1. OTOMATIS TAMBAH KOLOM PENDUKUNG JIKA BELUM ADA
 // ==========================================
-$cek_kolom_status = mysqli_query($koneksi, "SHOW COLUMNS FROM retur LIKE 'status_retur'");
-if (mysqli_num_rows($cek_kolom_status) == 0) {
-    mysqli_query($koneksi, "ALTER TABLE retur ADD status_retur ENUM('Pending', 'Disetujui', 'Ditolak') NOT NULL DEFAULT 'Pending' AFTER id_penjualan");
+// ==========================================
+// 1. CEK DAN TAMBAH KOLOM (Hanya jika belum ada)
+// ==========================================
+$query_cek = "SHOW COLUMNS FROM retur";
+$result_cek = mysqli_query($koneksi, $query_cek);
+$columns = [];
+while ($c = mysqli_fetch_assoc($result_cek)) {
+    $columns[] = $c['Field'];
 }
 
-$cek_kolom_nota = mysqli_query($koneksi, "SHOW COLUMNS FROM retur LIKE 'id_penjualan'");
-if (mysqli_num_rows($cek_kolom_nota) == 0) {
-    mysqli_query($koneksi, "ALTER TABLE retur ADD id_penjualan INT NULL AFTER status_retur");
+// Tambahkan status_retur jika belum ada
+if (!in_array('status_retur', $columns)) {
+    mysqli_query($koneksi, "ALTER TABLE retur ADD status_retur ENUM('Pending', 'Disetujui', 'Ditolak') NOT NULL DEFAULT 'Pending'");
+}
+
+// Tambahkan id_penjualan jika belum ada
+if (!in_array('id_penjualan', $columns)) {
+    mysqli_query($koneksi, "ALTER TABLE retur ADD id_penjualan INT NULL");
 }
 
 // Deteksi nama kolom id utama tabel retur

@@ -4,6 +4,17 @@ if (!isset($_SESSION['admin'])) {
     exit();
 }
 
+// Tambahkan proteksi hak akses
+// Asumsi: Anda menyimpan role/level di session, misal $_SESSION['level']
+// Sesuaikan nama index session dengan yang Anda gunakan untuk menyimpan level user
+if (isset($_SESSION['level']) && $_SESSION['level'] == 'Gudang') {
+    echo "<script>
+            alert('Akses Ditolak! Anda tidak memiliki izin untuk melihat laporan.');
+            window.location.href='index.php';
+          </script>";
+    exit();
+}
+
 // Tangkap filter dari URL, jika tidak ada gunakan default
 $tahun_pilihan   = isset($_GET['tahun']) ? mysqli_real_escape_string($koneksi, $_GET['tahun']) : date('Y');
 $bulan_pilihan   = isset($_GET['bulan']) ? mysqli_real_escape_string($koneksi, $_GET['bulan']) : date('m');
